@@ -1,11 +1,18 @@
-import datetime
+from enum import Enum
 
 from pydantic import BaseModel
 
 
-class Job(BaseModel):
-    name: str
-    status: str
-    started_at: datetime.datetime
-    reloaded_at: datetime.datetime
-    stopped_at: datetime.datetime
+class JobSettingsPatch(BaseModel):
+    name: str = None
+    crontab: str = None
+
+
+class JobStatus(str, Enum):
+    cancelled = "cancelled"
+    cancelling = "cancelling"
+    created = "created"
+    done = "done"
+    error = "error"
+    pending = "pending"
+    running = "running"

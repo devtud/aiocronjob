@@ -33,6 +33,6 @@ def test_job_run(mocker):
 
         await asyncio.sleep(1)
 
-        assert instance.future.exception().__str__() == "xxx"
+        assert instance.task.exception().__str__() == "xxx"
 
     asyncio.run(test())
