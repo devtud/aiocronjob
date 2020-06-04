@@ -1,86 +1,8 @@
 import asyncio
-import datetime
 from asyncio import Task
 from typing import Callable, Optional, List
 
-from aiocronjob.models import JobStatus
-from crontab import CronTab
-
-
-def now():
-    return datetime.datetime.utcnow()
-
-
-class Job:
-    def __init__(
-        self,
-        async_callable: Callable,
-        crontab: str = None,
-        name: str = None,
-        enabled: bool = True,
-    ):
-        self._async_callable = async_callable
-        self.crontab_str = ""
-        self.crontab: Optional[CronTab] = None
-
-        if crontab:
-            self.set_crontab(crontab)
-
-        self.name = name or " ".join(
-            async_callable.__name__.capitalize().split("_")
-        )
-
-        self.task: Optional[Task] = None
-        self.enabled = enabled
-        self.created_at = now()
-        self.started_at = None
-        self.status: JobStatus = JobStatus.created
-
-    def run(self, immediately=False):
-        if immediately:
-            delay = 0
-        else:
-            delay = self.crontab.next(default_utc=True)
-        self.task = asyncio.create_task(self.run_with_delay(delay=delay))
-
-    def cancel(self):
-        if self.status != JobStatus.running:
-            raise Exception(
-                f"Cannot cancel job with status {self.status.value}"
-            )
-        self.task.cancel()
-        self.status = JobStatus.cancelling
-
-    async def run_with_delay(self, delay: float):
-        self.status = JobStatus.pending
-        await asyncio.sleep(delay)
-        self.started_at = now()
-        self.status = JobStatus.running
-        try:
-            result = await self._async_callable()
-        except asyncio.CancelledError:
-            self.status = JobStatus.cancelled
-            raise
-        except Exception:
-            self.status = JobStatus.error
-            raise
-        self.status = JobStatus.done
-        return result
-
-    def set_crontab(self, crontab: str):
-        self.crontab = CronTab(crontab)
-        self.crontab_str = crontab
-
-    def dict(self):
-        return {
-            "name": self.name,
-            "next_run_in": self.crontab.next(),
-            "last_status": self.status.value,
-            "enabled": self.enabled,
-            "crontab": self.crontab_str,
-            "created_at": self.created_at,
-            "started_at": self.started_at,
-        }
+from aiocronjob.job import Job
 
 
 class JobManager:
@@ -143,6 +65,13 @@ class JobManager:
 
     @classmethod
     def schedule_job(cls, job: Job, immediately: bool = False):
+        if job.status == "running":
+            raise Exception("Job is already running")
+
+        if job.task and not job.task.done():
+            job.task.remove_done_callback(cls.handle_done_job)
+            job.task.cancel()
+
         job.run(immediately)
         job.task.add_done_callback(cls.handle_done_job)
 

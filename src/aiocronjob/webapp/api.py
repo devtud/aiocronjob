@@ -1,35 +1,39 @@
 from typing import Optional
 
 from aiocronjob.manager import manager
-from fastapi import FastAPI, HTTPException
+from aiocronjob.util import attach_loop_signal_handlers
+from fastapi import FastAPI, HTTPException, APIRouter
 
 app = FastAPI()
+
+api_router = APIRouter()
 
 
 @app.on_event("startup")
 def init():
+    attach_loop_signal_handlers()
     manager.run()
 
 
-@app.get("/")
+@api_router.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/jobs")
+@api_router.get("/jobs")
 async def get_jobs():
-    return [job.dict() for job in manager.jobs]
+    return [job.info() for job in manager.jobs]
 
 
-@app.get("/jobs/{job_name}")
+@api_router.get("/jobs/{job_name}")
 async def get_job(job_name: str):
     job = manager.get_job(job_name)
     if not job:
         raise HTTPException(status_code=404, detail="Not job found")
-    return job.dict()
+    return job.info()
 
 
-@app.get("/jobs/{job_name}/cancel")
+@api_router.get("/jobs/{job_name}/cancel")
 async def cancel_job(job_name: str):
     job = manager.get_job(job_name)
     if not job:
@@ -38,7 +42,7 @@ async def cancel_job(job_name: str):
     return {"success": True}
 
 
-@app.get("/jobs/{job_name}/start")
+@api_router.get("/jobs/{job_name}/start")
 async def start_job(job_name: str):
     job = manager.get_job(job_name)
     if not job:
@@ -47,7 +51,7 @@ async def start_job(job_name: str):
     return {"success": True}
 
 
-@app.get("/jobs/{job_name}/reschedule/{crontab}")
+@api_router.get("/jobs/{job_name}/reschedule/{crontab}")
 async def reschedule_job(job_name: str, crontab: Optional[str]):
     job = manager.get_job(job_name)
     if not job:
@@ -62,7 +66,7 @@ async def reschedule_job(job_name: str, crontab: Optional[str]):
     return {"success": True}
 
 
-@app.get("/jobs/{job_name}/reschedule")
+@api_router.get("/jobs/{job_name}/reschedule")
 async def reschedule_job(job_name: str):
     job = manager.get_job(job_name)
     if not job:
@@ -73,3 +77,6 @@ async def reschedule_job(job_name: str):
         )
     manager.schedule_job(job=job)
     return {"success": True}
+
+
+app.include_router(api_router, prefix="/api", tags=["api"])

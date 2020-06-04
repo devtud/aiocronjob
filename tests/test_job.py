@@ -1,7 +1,6 @@
 import asyncio
-from time import sleep
 
-from aiocronjob.manager import Job
+from aiocronjob.job import Job
 
 
 def test_job_name():
@@ -24,7 +23,7 @@ def test_job_run(mocker):
         raise ValueError('xxx')
 
     async def test():
-        mock = mocker.patch("aiocronjob.manager.CronTab")
+        mock = mocker.patch("aiocronjob.job.CronTab")
         mock.return_value.next.return_value = 0
 
         instance = Job(async_callable=some_job, crontab="1 * * * *")
