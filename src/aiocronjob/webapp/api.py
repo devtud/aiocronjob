@@ -1,7 +1,6 @@
 from typing import Optional
 
 from aiocronjob.manager import manager
-from aiocronjob.util import attach_loop_signal_handlers
 from fastapi import FastAPI, HTTPException, APIRouter
 
 app = FastAPI()
@@ -10,9 +9,16 @@ api_router = APIRouter()
 
 
 @app.on_event("startup")
-def init():
-    attach_loop_signal_handlers()
+async def init():
+    if manager.on_startup:
+        await manager.on_startup.__func__()
     manager.run()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    if manager.on_shutdown:
+        await manager.on_shutdown.__func__()
 
 
 @api_router.get("/")

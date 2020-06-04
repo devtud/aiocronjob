@@ -1,14 +1,17 @@
 import asyncio
 from asyncio import Task
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Coroutine
 
 from aiocronjob.job import Job
 
 
 class JobManager:
     jobs: List[Job] = []
-    on_cancel_callback = None
-    on_exception_callback = None
+
+    on_job_cancelled: Optional[Callable[[str], Coroutine]] = None
+    on_job_exception: Optional[Callable[[str, BaseException], Coroutine]] = None
+    on_startup: Optional[Callable[[], Coroutine]] = None
+    on_shutdown: Optional[Callable[[], Coroutine]] = None
 
     @classmethod
     def register(
@@ -39,13 +42,13 @@ class JobManager:
         task.remove_done_callback(cls.handle_done_job)
 
         if task.cancelled():
-            if cls.on_cancel_callback:
-                asyncio.create_task(cls.on_cancel_callback(job.name))
+            if cls.on_job_cancelled:
+                asyncio.create_task(cls.on_job_cancelled(job.name))
 
         elif task.exception():
-            if cls.on_exception_callback:
+            if cls.on_job_exception:
                 asyncio.create_task(
-                    cls.on_exception_callback(job.name, task.exception())
+                    cls.on_job_exception(job.name, task.exception())
                 )
 
         else:
@@ -54,14 +57,37 @@ class JobManager:
                 cls.schedule_job(job)
 
     @classmethod
-    def set_on_cancel_callback(cls, callback: Callable[[str], None]):
-        cls.on_cancel_callback = callback
+    def set_on_job_cancelled_callback(
+        cls, callback: Callable[[str], Coroutine]
+    ):
+        """
+        Sets on-job-cancelled callback.
+
+        Args:
+            callback: Async function which receives the job's name
+                to be executed after a job is cancelled. Its return
+                value is ignored.
+
+        Returns:
+            None
+
+        """
+        cls.on_job_cancelled = callback
 
     @classmethod
-    def set_on_exception_callback(
-        cls, callback: Callable[[str, Exception], None]
+    def set_on_job_exception_callback(
+        cls,
+        callback: Callable[[str, BaseException], Coroutine],
     ):
-        cls.on_exception_callback = callback
+        cls.on_job_exception = callback
+
+    @classmethod
+    def set_on_startup_callback(cls, callback: Callable[[], Coroutine]):
+        cls.on_startup = callback
+
+    @classmethod
+    def set_on_shutdown_callback(cls, callback: Callable[[], Coroutine]):
+        cls.on_shutdown = callback
 
     @classmethod
     def schedule_job(cls, job: Job, immediately: bool = False):
