@@ -1,65 +1,45 @@
 import asyncio
-from asyncio import Task
-from typing import Callable, Optional, List, Coroutine
+import collections
+from typing import Callable, Optional, Coroutine, List, OrderedDict
 
 from aiocronjob.job import Job
 
 
-class JobManager:
-    jobs: List[Job] = []
+class manager:
+    _jobs: OrderedDict[str, Job] = collections.OrderedDict()
+    _has_run: bool = False
 
-    on_job_cancelled: Optional[Callable[[str], Coroutine]] = None
-    on_job_exception: Optional[Callable[[str, BaseException], Coroutine]] = None
+    on_job_cancelled: Optional[Callable[[Job], Coroutine]] = None
+    on_job_exception: Optional[Callable[[Job, BaseException], Coroutine]] = None
     on_startup: Optional[Callable[[], Coroutine]] = None
     on_shutdown: Optional[Callable[[], Coroutine]] = None
 
     @classmethod
     def register(
-        cls, async_callable: Callable, crontab: str = None, name: str = None,
+        cls,
+        async_callable: Callable[[], Coroutine],
+        crontab: str = None,
+        name: str = None,
     ):
-        cls.jobs.append(
-            Job(async_callable=async_callable, crontab=crontab, name=name)
-        )
+        name_prefix = f"Job_{len(cls._jobs)}-"
+        name = name or f"{name_prefix}{async_callable.__name__}"
+
+        job = Job(async_callable=async_callable, crontab=crontab, name=name)
+
+        if job.name in cls._jobs:
+            raise Exception(f"Job {job.name} already exists.")
+        cls._jobs[job.name] = job
 
     @classmethod
     def get_job(cls, name: str) -> Optional[Job]:
-        jobs = list(filter(lambda j: j.name == name, cls.jobs))
-        if jobs:
-            return jobs[0]
-        return None
+        return cls._jobs.get(name)
 
     @classmethod
-    def get_job_by_task(cls, task: Task) -> Optional[Job]:
-        jobs = list(filter(lambda j: j.task == task, cls.jobs))
-        if jobs:
-            return jobs[0]
-        return None
+    def list_jobs(cls) -> List[Job]:
+        return list(cls._jobs.values())
 
     @classmethod
-    def handle_done_job(cls, task: Task):
-        job = cls.get_job_by_task(task)
-
-        task.remove_done_callback(cls.handle_done_job)
-
-        if task.cancelled():
-            if cls.on_job_cancelled:
-                asyncio.create_task(cls.on_job_cancelled(job.name))
-
-        elif task.exception():
-            if cls.on_job_exception:
-                asyncio.create_task(
-                    cls.on_job_exception(job.name, task.exception())
-                )
-
-        else:
-            if job.enabled and job.crontab:
-                """ If no crontab set, job runs only once """
-                cls.schedule_job(job)
-
-    @classmethod
-    def set_on_job_cancelled_callback(
-        cls, callback: Callable[[str], Coroutine]
-    ):
+    def set_on_job_cancelled_callback(cls, callback: Callable[[Job], Coroutine]):
         """
         Sets on-job-cancelled callback.
 
@@ -76,8 +56,7 @@ class JobManager:
 
     @classmethod
     def set_on_job_exception_callback(
-        cls,
-        callback: Callable[[str, BaseException], Coroutine],
+        cls, callback: Callable[[Job, BaseException], Coroutine],
     ):
         cls.on_job_exception = callback
 
@@ -91,21 +70,33 @@ class JobManager:
 
     @classmethod
     def schedule_job(cls, job: Job, immediately: bool = False):
-        if job.status == "running":
-            raise Exception("Job is already running")
-
-        if job.task and not job.task.done():
-            job.task.remove_done_callback(cls.handle_done_job)
-            job.task.cancel()
-
-        job.run(immediately)
-        job.task.add_done_callback(cls.handle_done_job)
+        job.schedule(immediately)
 
     @classmethod
     def run(cls):
-        for job in cls.jobs:
+        if cls._has_run:
+            raise Exception(f"Registered jobs were already scheduled.")
+
+        Job.add_done_callback(cls._handle_done_job)
+
+        for job in cls._jobs.values():
             if job.enabled and job.crontab:
                 cls.schedule_job(job)
+        cls._has_run = True
 
+    @classmethod
+    def _handle_done_job(cls, job: Job):
+        status = job.get_status()
 
-manager = JobManager()
+        if status == "cancelled":
+            if cls.on_job_cancelled:
+                asyncio.create_task(cls.on_job_cancelled(job))
+
+        elif status == "error":
+            if cls.on_job_exception:
+                asyncio.create_task(cls.on_job_exception(job, job.exception()))
+
+        else:
+            if job.enabled and job.crontab:
+                """ If no crontab set, job runs only once """
+                cls.schedule_job(job)

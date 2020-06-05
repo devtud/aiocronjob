@@ -1,7 +1,10 @@
-from typing import Optional
+from typing import Optional, List
 
+from aiocronjob.job import JobInfo
 from aiocronjob.manager import manager
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter, Body
+from pydantic import BaseModel
+from starlette.responses import JSONResponse
 
 app = FastAPI()
 
@@ -11,14 +14,14 @@ api_router = APIRouter()
 @app.on_event("startup")
 async def init():
     if manager.on_startup:
-        await manager.on_startup.__func__()
+        await manager.on_startup()
     manager.run()
 
 
 @app.on_event("shutdown")
 async def shutdown():
     if manager.on_shutdown:
-        await manager.on_shutdown.__func__()
+        await manager.on_shutdown()
 
 
 @api_router.get("/")
@@ -26,63 +29,74 @@ def read_root():
     return {"Hello": "World"}
 
 
-@api_router.get("/jobs")
-async def get_jobs():
-    return [job.info() for job in manager.jobs]
+class OperationStatus(BaseModel):
+    success: bool
+    detail: str = None
 
 
-@api_router.get("/jobs/{job_name}")
-async def get_job(job_name: str):
+class OperationStatusResponse(JSONResponse):
+    def __init__(
+        self, *, success: bool = True, detail: str = None, status_code: int = 200
+    ):
+        content = OperationStatus(success=success, detail=detail)
+        super().__init__(content.dict(), status_code=status_code)
+
+
+@api_router.get("/jobs", response_model=List[JobInfo])
+async def get_jobs() -> List[JobInfo]:
+    """ List all registered jobs info """
+    return [job.info() for job in manager.list_jobs()]
+
+
+@api_router.get("/jobs/{job_name}", response_model=JobInfo)
+async def get_job_info(job_name: str) -> JobInfo:
+    """ Get a job info """
     job = manager.get_job(job_name)
     if not job:
-        raise HTTPException(status_code=404, detail="Not job found")
+        raise HTTPException(status_code=404, detail="Job not found")
     return job.info()
 
 
-@api_router.get("/jobs/{job_name}/cancel")
-async def cancel_job(job_name: str):
+@api_router.get("/jobs/{job_name}/cancel", response_model=OperationStatus)
+async def cancel_job(job_name: str) -> OperationStatusResponse:
     job = manager.get_job(job_name)
     if not job:
-        raise HTTPException(status_code=404, detail="Not job found")
+        return OperationStatusResponse(status_code=404, detail="Job not found")
     job.cancel()
-    return {"success": True}
+    return OperationStatusResponse()
 
 
-@api_router.get("/jobs/{job_name}/start")
-async def start_job(job_name: str):
+@api_router.get("/jobs/{job_name}/start", response_model=OperationStatus)
+async def start_job(job_name: str) -> OperationStatusResponse:
     job = manager.get_job(job_name)
     if not job:
-        raise HTTPException(status_code=404, detail="Not job found")
-    manager.schedule_job(job=job, immediately=True)
-    return {"success": True}
+        return OperationStatusResponse(status_code=404, detail="Job not found")
+
+    job.schedule(immediately=True, ignore_pending=True)
+
+    return OperationStatusResponse()
 
 
-@api_router.get("/jobs/{job_name}/reschedule/{crontab}")
-async def reschedule_job(job_name: str, crontab: Optional[str]):
+@api_router.post("/jobs/{job_name}/reschedule", response_model=OperationStatus)
+async def reschedule_job(
+    job_name: str, crontab: str = Body("")
+) -> OperationStatusResponse:
+    """ Changes the crontab specification of a job. In case of a running job, the new
+    crontab will be effective after the job is done.
+    """
     job = manager.get_job(job_name)
     if not job:
-        raise HTTPException(status_code=404, detail="Not job found")
-    try:
-        job.set_crontab(crontab=crontab)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400, detail=f"Bad crontab format: {str(e)}"
-        )
-    manager.schedule_job(job=job)
-    return {"success": True}
-
-
-@api_router.get("/jobs/{job_name}/reschedule")
-async def reschedule_job(job_name: str):
-    job = manager.get_job(job_name)
-    if not job:
-        raise HTTPException(status_code=404, detail="Not job found")
-    if not job.crontab_str:
-        raise HTTPException(
-            status_code=400, detail="Cannot reschedule job with no crontab"
-        )
-    manager.schedule_job(job=job)
-    return {"success": True}
+        return OperationStatusResponse(status_code=404, detail="Job not found")
+    if crontab:
+        try:
+            job.set_crontab(crontab=crontab)
+        except ValueError as e:
+            return OperationStatusResponse(
+                status_code=400, detail=f"Bad crontab format: {str(e)}"
+            )
+    if job.get_status() != "running":
+        job.schedule(ignore_pending=True)
+    return OperationStatusResponse()
 
 
 app.include_router(api_router, prefix="/api", tags=["api"])

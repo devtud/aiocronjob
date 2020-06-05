@@ -1,0 +1,2 @@
+class JobAlreadyRunningException(Exception):
+    pass
