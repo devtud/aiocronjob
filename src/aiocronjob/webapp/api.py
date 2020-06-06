@@ -11,13 +11,6 @@ app = FastAPI()
 api_router = APIRouter()
 
 
-@app.on_event("startup")
-async def init():
-    if manager.on_startup:
-        await manager.on_startup()
-    manager.run()
-
-
 @app.on_event("shutdown")
 async def shutdown():
     if manager.on_shutdown:
@@ -61,7 +54,9 @@ async def get_job_info(job_name: str) -> JobInfo:
 async def cancel_job(job_name: str) -> OperationStatusResponse:
     job = manager.get_job(job_name)
     if not job:
-        return OperationStatusResponse(status_code=404, detail="Job not found")
+        return OperationStatusResponse(
+            success=False, status_code=404, detail="Job not found"
+        )
     job.cancel()
     return OperationStatusResponse()
 
@@ -70,7 +65,9 @@ async def cancel_job(job_name: str) -> OperationStatusResponse:
 async def start_job(job_name: str) -> OperationStatusResponse:
     job = manager.get_job(job_name)
     if not job:
-        return OperationStatusResponse(status_code=404, detail="Job not found")
+        return OperationStatusResponse(
+            success=False, status_code=404, detail="Job not found"
+        )
 
     job.schedule(immediately=True, ignore_pending=True)
 
@@ -86,13 +83,15 @@ async def reschedule_job(
     """
     job = manager.get_job(job_name)
     if not job:
-        return OperationStatusResponse(status_code=404, detail="Job not found")
+        return OperationStatusResponse(
+            success=False, status_code=404, detail="Job not found"
+        )
     if crontab:
         try:
             job.set_crontab(crontab=crontab)
         except ValueError as e:
             return OperationStatusResponse(
-                status_code=400, detail=f"Bad crontab format: {str(e)}"
+                success=False, status_code=400, detail=f"Bad crontab format: {str(e)}"
             )
     if job.get_status() != "running":
         job.schedule(ignore_pending=True)
