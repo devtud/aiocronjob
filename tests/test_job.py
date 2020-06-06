@@ -28,7 +28,8 @@ def test_job_run(mocker):
 
         assert job.get_status() == "error"
 
-    asyncio.run(test())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(test())
 
 
 def test_job_status():
@@ -50,4 +51,5 @@ def test_job_status():
 
         assert job.get_status() == "done"
 
-    asyncio.run(helper())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(helper())

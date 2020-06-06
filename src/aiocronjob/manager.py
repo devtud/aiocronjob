@@ -1,12 +1,20 @@
 import asyncio
 import collections
 import datetime
-from typing import Callable, Optional, Coroutine, List, OrderedDict, Tuple, Union
+from asyncio import Task
+from typing import Callable, Optional, Coroutine, List, Tuple
 
 from aiocronjob.job import Job, JobInfo
 from aiocronjob.logger import logger
 from aiocronjob.util import now
 from pydantic import BaseModel
+
+try:
+    from typing import OrderedDict
+except ImportError:
+    from typing import Dict
+
+    OrderedDict = Dict
 
 
 class State(BaseModel):
@@ -129,13 +137,20 @@ class manager:
     def _handle_done_job(cls, job: Job):
         status = job.get_status()
 
+        def create_task(coro) -> Task:
+            if hasattr(asyncio, "create_task"):
+                return asyncio.create_task(coro)
+            else:
+                loop = asyncio.get_event_loop()
+                return loop.create_task(coro)
+
         if status == "cancelled":
             if cls.on_job_cancelled:
-                asyncio.create_task(cls.on_job_cancelled(job))
+                create_task(cls.on_job_cancelled(job))
 
         elif status == "error":
             if cls.on_job_exception:
-                asyncio.create_task(cls.on_job_exception(job, job.exception()))
+                create_task(cls.on_job_exception(job, job.exception()))
 
         else:
             if job.enabled and job.crontab:

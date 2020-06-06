@@ -1,15 +1,20 @@
 import asyncio
 import datetime
 from asyncio.tasks import Task
-from typing import Callable, Optional, Literal, Coroutine
+from typing import Callable, Optional, Coroutine, NewType
 
 from aiocronjob.util import now
 from crontab import CronTab
 from pydantic import BaseModel
 
-JobStatus = Literal[
-    "cancelled", "cancelling", "created", "done", "error", "pending", "running",
-]
+try:
+    from typing import Literal
+
+    JobStatus = Literal[
+        "cancelled", "created", "done", "error", "pending", "running",
+    ]
+except ImportError:
+    JobStatus = NewType("JobStatus", str)
 
 
 class JobInfo(BaseModel):
@@ -79,9 +84,11 @@ class Job:
                     f"Jobs with no crontab spec must be ran with `immediately` flag `True`"
                 )
 
-        self._task = asyncio.create_task(
-            self.run_with_delay(delay=delay), name=self.name
-        )
+        if hasattr(asyncio, "create_task"):
+            self._task = asyncio.create_task(self.run_with_delay(delay=delay))
+        else:
+            loop = asyncio.get_event_loop()
+            self._task = loop.create_task(self.run_with_delay(delay=delay))
 
         self._task.add_done_callback(self._task_done_callback)
 
