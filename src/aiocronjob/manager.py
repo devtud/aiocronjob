@@ -1,7 +1,7 @@
 import asyncio
 import collections
 import datetime
-from typing import Callable, Optional, Coroutine, List, OrderedDict, Tuple
+from typing import Callable, Optional, Coroutine, List, OrderedDict, Tuple, Union
 
 from aiocronjob.job import Job, JobInfo
 from aiocronjob.logger import logger
@@ -17,6 +17,7 @@ class State(BaseModel):
 class manager:
     _jobs: OrderedDict[str, Job] = collections.OrderedDict()
     _has_run: bool = False
+    _load_from_state: State
 
     on_job_cancelled: Optional[Callable[[Job], Coroutine]] = None
     on_job_exception: Optional[Callable[[Job, BaseException], Coroutine]] = None
@@ -95,8 +96,14 @@ class manager:
 
     @classmethod
     def state(cls) -> State:
-        state = State(created_at=now(), jobs_info=[job.info() for job in cls.list_jobs()])
+        state = State(
+            created_at=now(), jobs_info=[job.info() for job in cls.list_jobs()]
+        )
         return state
+
+    @classmethod
+    def load_state(cls, state: State):
+        cls._load_from_state = state
 
     @classmethod
     def run_from_state(cls, state: State, resumed_statuses: Tuple = ("running",)):
