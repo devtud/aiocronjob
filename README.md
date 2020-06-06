@@ -2,6 +2,14 @@
 
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
+### Requires python >= 3.6
+
+### How to install
+
+```bash
+pip3 install aiocronjob
+```
+
 ### Usage example
 
 ```python
