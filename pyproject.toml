@@ -1,8 +1,15 @@
 [tool.poetry]
 name = "aiocronjob"
-version = "0.2.0"
-description = ""
+version = "0.2.1"
+description = "Schedule async tasks and manage them using a REST API or WEB UI"
+readme = "README.md"
+repository = "https://github.com/devtud/aiocronjob"
+homepage = "https://github.com/devtud/aiocronjob"
+keywords = ["async tasks", "crontab", "rest api"]
 authors = ["devtud <devtud@gmail.com>"]
+maintainers = ["devtud <devtud@gmail.com>"]
+license = "MIT"
+include = ["README.md"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
