@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 
 from aiocronjob.job import JobInfo
 from aiocronjob.manager import manager
@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, APIRouter, Body
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-app = FastAPI()
+app = FastAPI(title="AIOCronJob", version="0.2.0")
 
 api_router = APIRouter()
 
