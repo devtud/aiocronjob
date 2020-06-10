@@ -2,7 +2,7 @@ import uvicorn
 
 from .job import Job, JobInfo, JobStatus
 from .manager import manager, State
-from .webapp.api import app
+from aiocronjob.api import app
 
 
 def run_app(state: State = None, host="0.0.0.0", port=5000):
