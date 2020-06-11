@@ -9,7 +9,7 @@ keywords = ["async tasks", "crontab", "rest api"]
 authors = ["devtud <devtud@gmail.com>"]
 maintainers = ["devtud <devtud@gmail.com>"]
 license = "MIT"
-include = ["README.md"]
+include = ["README.md", "src/aiocronjob/build/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
@@ -51,7 +51,6 @@ exclude = '''
     | \.venv
     | _build
     | buck-out
-    | build
     | dist
   )/
   | foo.py           # also separately exclude a file named foo.py in

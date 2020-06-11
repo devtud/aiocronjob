@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 from aiocronjob.job import JobInfo
@@ -115,4 +116,10 @@ async def reschedule_job(
 
 app.include_router(api_router, prefix="/api", tags=["api"])
 
-app.mount("/", StaticFiles(directory="../webapp/build", html=True), name="static")
+app.mount(
+    "/",
+    StaticFiles(
+        directory=Path(__file__).parent.joinpath("build").absolute(), html=True,
+    ),
+    name="static",
+)
