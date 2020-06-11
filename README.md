@@ -34,9 +34,9 @@ async def second_task():
     raise Exception("second task exception")
 
 
-manager.register(async_callable=first_task, crontab="22 * * * *")
+manager.register(first_task, name="First task", crontab="22 * * * *")
 
-manager.register(async_callable=second_task, crontab="23 * * * *")
+manager.register(second_task, name="Second task", crontab="23 * * * *")
 
 
 async def on_job_exception(job: Job, exc: BaseException):
@@ -64,9 +64,21 @@ if __name__ == "__main__":
     run_app()
 ```
 
-After running the app, the [FastAPI](https://fastapi.tiangolo.com) server runs at http//localhost:5000 ready to receive commands:
+After running the app, the [FastAPI](https://fastapi.tiangolo.com) server runs at `localhost:5000`.
 
-- List all jobs info
+#### Web Interface
+
+Open [localhost:5000](http://localhost:5000) in your browser:
+
+![WEBUIScreenshot](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/simple_tasks-screenshot.png)
+
+#### Rest API
+
+Open [localhost:5000/docs](http://localhost:5000/docs) for endpoints docs.
+
+![EndpointsScreenshot](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/simple_tasks-endpoints-screenshot.png)
+
+**`curl`** example:
  
 ```bash
 $ curl http://0.0.0.0:5000/api/jobs
@@ -74,7 +86,7 @@ $ curl http://0.0.0.0:5000/api/jobs
 ```json
 [
   {
-    "name": "Job_0-first_task",
+    "name": "First task",
     "next_run_in": "3481.906931",
     "last_status": "pending",
     "enabled": "True",
@@ -84,7 +96,7 @@ $ curl http://0.0.0.0:5000/api/jobs
     "stopped_at": null
   },
   {
-    "name": "Job_1-second_task",
+    "name": "Second task",
     "next_run_in": "3541.904723",
     "last_status": "error",
     "enabled": "True",
@@ -95,5 +107,3 @@ $ curl http://0.0.0.0:5000/api/jobs
   }
 ]
 ```
-
-- For other endpoints check http://localhost:5000/docs
