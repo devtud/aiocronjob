@@ -3,9 +3,10 @@ from typing import List
 from aiocronjob.job import JobInfo
 from aiocronjob.manager import manager
 from fastapi import FastAPI, HTTPException, APIRouter, Body
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
 app = FastAPI(title="AIOCronJob", version="0.2.0")
 
@@ -113,3 +114,5 @@ async def reschedule_job(
 
 
 app.include_router(api_router, prefix="/api", tags=["api"])
+
+app.mount("/", StaticFiles(directory="../webapp/build", html=True), name="static")
