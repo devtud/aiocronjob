@@ -5,10 +5,24 @@ from aiocronjob.manager import manager
 from fastapi import FastAPI, HTTPException, APIRouter, Body
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="AIOCronJob", version="0.2.0")
 
 api_router = APIRouter()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("shutdown")
