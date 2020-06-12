@@ -1,6 +1,10 @@
 # aiocronjob
 
 [![Join the chat at https://gitter.im/aiocronjob/community](https://badges.gitter.im/aiocronjob/community.svg)](https://gitter.im/aiocronjob/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aiocronjob?style=flat-square)
+![PyPI](https://img.shields.io/pypi/v/aiocronjob?style=flat-square)
+![PyPI - License](https://img.shields.io/pypi/l/aiocronjob?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/devtud/aiocronjob?style=flat-square)
 
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
