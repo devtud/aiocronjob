@@ -100,8 +100,8 @@ class JobsView extends React.Component<{}, State> {
         ActionSheet.showActionSheetWithOptions({
                 options: buttons,
                 cancelButtonIndex: buttons.length - 1,
-                title: job.name,
-                message: 'Please select an action',
+                title: <span>{job.name} {JobsView.getStatusBadge(job.last_status)}</span>,
+                message: <span>&#128339; {job.crontab}</span>,
                 maskClosable: true,
             },
             (buttonIndex: number) => {
@@ -132,8 +132,9 @@ class JobsView extends React.Component<{}, State> {
                 <List>
                     {jobs.map(job =>
                         <List.Item key={job.name}
+                                   arrow="horizontal"
                                    onClick={() => this.showActionSheet(job)}
-                                   extra={<span>&#128339; {job.crontab}</span>}>
+                        >
                             <span>{job.name}
                                 {JobsView.getStatusBadge(job.last_status)}
                             </span>
