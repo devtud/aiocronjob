@@ -115,3 +115,69 @@ $ curl http://0.0.0.0:5000/api/jobs
   }
 ]
 ```
+
+### Development
+
+**Requirements**:
+- **Python** >= 3.6 and **Poetry** for backend
+- **npm** for frontend
+
+The frontend is a separate Single Page Application (SPA), so the backend does not depend on it. It just calls the backend's API endpoints.
+
+#### Install backend dependencies (Python)
+
+```bash
+$ git clone https://github.com/devtud/aiocronjob.git
+
+$ cd aiocronjob
+
+$ poetry install
+```
+
+#### Run backend tests
+
+```bash
+poetry run pytest --cov -s
+```
+
+#### Run backend example
+
+```bash
+poetry run python examples/simple_tasks.py
+```
+
+`uvicorn` will run the `FastAPI` app at http://localhost:5000.
+
+#### Install frontend dependencies (React SPA)
+
+Open another terminal tab in the project root.
+
+```bash
+$ cd src/webapp
+
+$ npm i
+```
+
+#### Run frontend tests
+
+```bash
+npm test
+```
+
+#### Let frontend know about backend
+
+Create `.env` file with the content from `.env.example` file to let the frontend know that the backend is running at http://localhost:5000.
+
+```bash
+cp .env.example .env
+```
+
+#### Serve frontend
+
+```bash
+npm start
+```
+
+A `React` app starts at http://localhost:3000.
+
+You should now be able to view the example jobs in your browser at http://localhost:3000.
