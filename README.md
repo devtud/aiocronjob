@@ -77,7 +77,7 @@ Open [localhost:5000](http://localhost:5000) in your browser:
 
 Open [localhost:5000/docs](http://localhost:5000/docs) for endpoints docs.
 
-![EndpointsScreenshot](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/simple_tasks-endpoints-screenshot.png)
+![EndpointsScreenshot](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/screenshot-endpoints.webp)
 
 **`curl`** example:
  
