@@ -5,6 +5,7 @@
 ![PyPI](https://img.shields.io/pypi/v/aiocronjob?style=flat-square)
 ![PyPI - License](https://img.shields.io/pypi/l/aiocronjob?style=flat-square)
 ![GitHub last commit](https://img.shields.io/github/last-commit/devtud/aiocronjob?style=flat-square)
+![PyPI - Status](https://img.shields.io/pypi/status/aiocronjob?style=flat-square)
 
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
