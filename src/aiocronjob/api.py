@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 
 from aiocronjob.job import JobInfo
+from aiocronjob.logger import logger
 from aiocronjob.manager import manager
 from fastapi import FastAPI, HTTPException, APIRouter, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -116,10 +117,9 @@ async def reschedule_job(
 
 app.include_router(api_router, prefix="/api", tags=["api"])
 
-app.mount(
-    "/",
-    StaticFiles(
-        directory=Path(__file__).parent.joinpath("build").absolute(), html=True,
-    ),
-    name="static",
-)
+static_dir = Path(__file__).parent.joinpath("build").absolute()
+
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+else:
+    logger.warning("Static directory does not exist!")
