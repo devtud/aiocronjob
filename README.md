@@ -1,5 +1,7 @@
 # aiocronjob
 
+[![Join the chat at https://gitter.im/aiocronjob/community](https://badges.gitter.im/aiocronjob/community.svg)](https://gitter.im/aiocronjob/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
 ### Requires python >= 3.6
