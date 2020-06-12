@@ -70,7 +70,8 @@ After running the app, the [FastAPI](https://fastapi.tiangolo.com) server runs a
 
 Open [localhost:5000](http://localhost:5000) in your browser:
 
-![WEBUIScreenshot](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/simple_tasks-screenshot.png)
+![screenshot-actionmenu](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/screenshot-actionmenu.webp)
+![screenshot-all](https://raw.githubusercontent.com/devtud/aiocronjob/master/examples/screenshot-all.webp)
 
 #### Rest API
 
