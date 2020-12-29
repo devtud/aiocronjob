@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiocronjob"
-version = "0.2.5"
+version = "0.2.6"
 description = "Schedule async tasks and manage them using a REST API or WEB UI"
 readme = "README.md"
 repository = "https://github.com/devtud/aiocronjob"
