@@ -172,18 +172,27 @@ class JobsView extends React.Component<{}, State> {
                       console.log('onTabClick', index, tab);
                   }}
             >
-                <div>
-                    {this.state.jobs.length === 0 ? "No jobs." : renderJobList(this.state.jobs)}
+                <div style={{height: '100%'}}>
+                    {
+                        this.state.jobs.length === 0 ?
+                            <span>No jobs.</span> :
+                            renderJobList(this.state.jobs)
+                    }
                 </div>
-                <div>
-
-                    {running.length === 0 ? "No running jobs." : renderJobList(running)}
+                <div style={{height: '100%'}}>
+                    {
+                        running.length === 0 ?
+                            <span style={{margin: "auto"}}>No running jobs.</span> :
+                            renderJobList(running)
+                    }
                 </div>
-                <div>
-                    {errors.length === 0 ? "No error jobs." : renderJobList(errors)}
+                <div style={{height: '100%'}}>
+                    {errors.length === 0 ?
+                        <span>No error jobs.</span> :
+                        renderJobList(errors)}
                 </div>
-                <div>
-                    {done.length === 0 ? "No done jobs." : renderJobList(done)}
+                <div style={{height: '100%'}}>
+                    {done.length === 0 ? <span>No done jobs.</span> : renderJobList(done)}
                 </div>
             </Tabs>
         ];
