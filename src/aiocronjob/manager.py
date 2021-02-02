@@ -6,7 +6,7 @@ from crontab import CronTab
 from dataclasses import dataclass
 
 from .logger import logger
-from .models import JobDefinition, RunningJob, JobLog, JobInfo, JobStatus
+from .models import JobDefinition, RunningJob, JobLog, JobInfo, JobStatus, State
 from .typing import Callable, Optional, Coroutine, List, Dict, Deque
 from .util import now
 
@@ -17,14 +17,17 @@ class RealTimeInfo:
     next_run_ts: Optional[int]
 
 
-class manager:
+class Manager:
     _definitions: Dict[str, JobDefinition] = {}
     _real_time: Dict[str, RealTimeInfo] = {}
     _running_jobs: Dict[str, RunningJob] = {}
     _log_queue: Deque[JobLog] = deque()
 
     _is_running: bool = False
+    _is_shutting_down: bool = False
     # _load_from_state: State
+
+    _cleanup_tasks: List[asyncio.Task] = []
 
     @classmethod
     def register(
@@ -51,7 +54,7 @@ class manager:
 
     @classmethod
     def _get_job_definition(
-        cls, name: str, raise_not_found: False
+        cls, name: str, raise_not_found: bool = False
     ) -> Optional[JobDefinition]:
         definition = cls._definitions.get(name)
         if definition:
@@ -92,12 +95,15 @@ class manager:
         return rt_info.status
 
     @classmethod
-    def _get_job_next_run_in(cls, name: str) -> int:
+    def _get_job_next_run_in(cls, name: str) -> Optional[int]:
         definition = cls._get_job_definition(name, True)
+        if definition.crontab is None:
+            return None
         return CronTab(definition.crontab).next(default_utc=True)
 
     @classmethod
     async def cancel_job(cls, name: str):
+        logger.info(f"Cancelling {name}")
         cls._get_job_definition(name, True)
         running_job = cls._get_running_job(name, True)
         cancelled = running_job.asyncio_task.cancel()
@@ -123,8 +129,7 @@ class manager:
         cls._running_jobs[definition.name] = running_job
         cls._real_time[name] = RealTimeInfo(
             status="running",
-            next_run_ts=now().timestamp()
-            + (CronTab(definition.crontab).next() if definition.crontab else 0),
+            next_run_ts=now().timestamp() + (cls._get_job_next_run_in(name) or 0),
         )
 
     @classmethod
@@ -132,8 +137,8 @@ class manager:
         return [cls.get_job_info(name) for name in cls._definitions.keys()]
 
     @classmethod
-    async def _on_job_done(cls, job_name: str, task: asyncio.Task) -> None:
-        definition = cls._get_job_definition[job_name]
+    def _on_job_done(cls, job_name: str, task: asyncio.Task) -> None:
+        definition = cls._get_job_definition(job_name)
         del cls._running_jobs[job_name]
 
         try:
@@ -145,7 +150,9 @@ class manager:
             cls._real_time[job_name] = RealTimeInfo(
                 status="cancelled", next_run_ts=None
             )
-            return await cls.on_job_cancelled(job_name)
+            task = asyncio.get_event_loop().create_task(cls.on_job_cancelled(job_name))
+            cls._cleanup_tasks.append(task)
+            return
 
         if exception:
             cls._log_event(
@@ -156,7 +163,11 @@ class manager:
                 )
             )
             cls._real_time[job_name] = RealTimeInfo(status="failed", next_run_ts=None)
-            return await cls.on_job_exception(job_name, exception)
+            task = asyncio.get_event_loop().create_task(
+                cls.on_job_exception(job_name, exception)
+            )
+            cls._cleanup_tasks.append(task)
+            return
 
         cls._log_event(
             JobLog(
@@ -166,11 +177,13 @@ class manager:
         )
         cls._real_time[job_name] = RealTimeInfo(
             status="finished",
-            next_run_ts=now().timestamp() + CronTab(definition.crontab).next()
+            next_run_ts=now().timestamp() + cls._get_job_next_run_in(job_name)
             if definition.crontab
             else None,
         )
-        return await cls.on_job_finished(job_name)
+        task = asyncio.get_event_loop().create_task(cls.on_job_finished(job_name))
+        cls._cleanup_tasks.append(task)
+        return
 
     @classmethod
     async def _on_job_started(cls, job_name: str):
@@ -194,30 +207,44 @@ class manager:
 
     @classmethod
     async def _run_ad_infinitum(cls):
-        while True:
+        while True and cls._is_running:
             for job_name, rt_info in cls._real_time.items():
                 this_time_ts = now().timestamp()
-                definition = cls._definitions[job_name]
 
                 if rt_info.status == "registered":
-                    delta: int
-                    if not definition.crontab:
-                        delta = 0
-                    else:
-                        delta = CronTab(definition.crontab).next()
+                    delta: int = cls._get_job_next_run_in(job_name) or 0
 
                     cls._real_time[job_name] = RealTimeInfo(
                         status="pending", next_run_ts=now().timestamp() + delta
                     )
-                elif rt_info.next_run_ts is not None and rt_info.status in [
-                    "pending",
-                    "finished",
-                ]:
-                    if rt_info.next_run_ts <= this_time_ts:
-                        cls.start_job(job_name)
+                elif (
+                    not cls._is_shutting_down
+                    and rt_info.status in ["pending", "finished"]
+                    and rt_info.next_run_ts is not None
+                    and rt_info.next_run_ts <= this_time_ts
+                ):
+                    cls.start_job(job_name)
+
                 else:  # rt_info.status in ["running", "cancelled", "failed"]:
                     ...
             await asyncio.sleep(1.5)
+
+    @classmethod
+    async def shutdown(cls):
+        await asyncio.sleep(2)
+        logger.info("Shutting down...")
+        logger.info(f"Cancelling {len(cls._running_jobs)} running jobs...")
+        cls._is_shutting_down = True
+
+        for running_job in cls._running_jobs.values():
+            await cls.cancel_job(running_job.job_definition.name)
+            logger.debug(f"Cancelled job {running_job.job_definition.name}")
+
+        await asyncio.gather(*cls._cleanup_tasks)
+        logger.debug("Cleanup tasks finished.")
+
+        cls._is_running = False
+        cls._is_shutting_down = False
 
     @classmethod
     async def on_job_started(cls, job_name: str):
@@ -229,11 +256,11 @@ class manager:
 
     @classmethod
     async def on_job_cancelled(cls, job_name: str):
-        ...
+        logger.info(f"Cancelled {job_name}")
 
     @classmethod
     async def on_job_finished(cls, job_name: str):
-        ...
+        logger.info(f"Finished {job_name}")
 
     @classmethod
     async def on_startup(cls):
@@ -243,12 +270,10 @@ class manager:
     async def on_shutdown(cls):
         ...
 
-    # @classmethod
-    # def state(cls) -> State:
-    #     state = State(
-    #         created_at=now(), jobs_info=[job.info() for job in cls.get_all_jobs_info()]
-    #     )
-    #     return state
+    @classmethod
+    def state(cls) -> State:
+        state = State(created_at=now(), jobs_info=cls.get_all_jobs_info())
+        return state
 
     # @classmethod
     # def load_state(cls, state: State):

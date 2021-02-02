@@ -1,77 +1,59 @@
 import asyncio
 
-import pytest
-from aiocronjob.manager import manager as manager_class
+from aiocronjob.logger import logger
+from aiocronjob.manager import Manager
+
+from . import IsolatedAsyncioTestCase
 
 
-@pytest.fixture
-def manager():
-    manager_class._jobs.clear()
-    return manager_class
+class TestCase(IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        async def task1():
+            ...
 
+        async def task2():
+            ...
 
-def test_register(manager):
-    async def task():
-        ...
+        Manager.register(async_callable=task1, name="first task")
+        Manager.register(async_callable=task2, name="second task")
 
-    manager.register(async_callable=task)
-    manager.register(async_callable=task, name="task1-but-different-name")
+    def test_register(self):
+        self.assertEqual("first task", Manager._definitions["first task"].name)
+        self.assertEqual("second task", Manager._definitions["second task"].name)
 
-    assert 2 == len(manager._jobs)
+    def test_register_duplicate_names_error(self):
+        async def task():
+            ...
 
+        with self.assertRaises(Exception) as ctx:
+            Manager.register(async_callable=task, name="first task")
 
-def test_register_duplicate_names_error(manager):
-    async def task():
-        ...
+        self.assertEqual(ctx.exception.__str__(), "Job <first task> already exists.")
 
-    manager.register(async_callable=task, name="job")
-    with pytest.raises(Exception) as e:
-        manager.register(async_callable=task, name="job")
-    assert str(e.value) == "Job job already exists."
+    async def test_run_twice_warning(self):
+        async def long_lasting_task():
+            await asyncio.sleep(3)
 
+        Manager.register(long_lasting_task, name="long-lasting-task")
 
-def test_run_twice_error(manager):
-    async def task():
-        ...
+        t1 = asyncio.get_event_loop().create_task(Manager.run())
 
-    manager.register(async_callable=task)
+        await asyncio.sleep(0.01)
 
-    manager.run()
+        with self.assertLogs(logger, "WARNING") as l:
+            await Manager.run()
+            self.assertIn(
+                "WARNING:aiocronjob:Ignoring current calling of run(). Already running.",
+                l.output,
+            )
 
-    with pytest.raises(Exception) as e:
-        manager.run()
+        await Manager.shutdown()
+        await asyncio.gather(t1)
 
-    assert str(e.value) == "Registered jobs were already scheduled."
+    def test_state(self):
 
+        state = Manager.state()
 
-def test_list_jobs(manager):
-    async def task1():
-        ...
+        self.assertEqual(2, len(state.jobs_info))
 
-    async def task2():
-        ...
-
-    manager.register(async_callable=task1)
-    manager.register(async_callable=task2)
-    jobs = manager.list_jobs()
-    assert jobs[0].name == "Job_0-task1"
-    assert jobs[0]._async_callable is task1
-    assert jobs[1].name == "Job_1-task2"
-    assert jobs[1]._async_callable is task2
-
-
-def test_state(manager):
-    async def task1():
-        await asyncio.sleep(1)
-
-    async def task2():
-        await asyncio.sleep(1)
-
-    manager.register(async_callable=task1)
-    manager.register(async_callable=task2)
-
-    state = manager.state()
-
-    assert len(state.jobs_info) == 2
-
-    assert state.jobs_info[0].last_status == state.jobs_info[1].last_status == "created"
+        self.assertEqual("registered", state.jobs_info[0].last_status)
