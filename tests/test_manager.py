@@ -3,10 +3,24 @@ import asyncio
 from aiocronjob.logger import logger
 from aiocronjob.manager import Manager
 
-from . import IsolatedAsyncioTestCase
+from .common import IsolatedAsyncioTestCase
 
 
 class TestCase(IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not hasattr(cls, "loop"):
+            policy = asyncio.get_event_loop_policy()
+            res = policy.new_event_loop()
+            asyncio.set_event_loop(res)
+            res._close = res.close
+            res.close = lambda: None
+            cls.loop = res
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.loop._close()
+
     def setUp(self) -> None:
         async def task1():
             ...
@@ -17,11 +31,19 @@ class TestCase(IsolatedAsyncioTestCase):
         Manager.register(async_callable=task1, name="first task")
         Manager.register(async_callable=task2, name="second task")
 
-    def test_register(self):
+    def tearDown(self) -> None:
+        self.get_event_loop().run_until_complete(Manager.shutdown())
+        Manager.clear()
+
+    def get_event_loop(self):
+        self.__class__.setUpClass()
+        return self.__class__.loop
+
+    async def test_register(self):
         self.assertEqual("first task", Manager._definitions["first task"].name)
         self.assertEqual("second task", Manager._definitions["second task"].name)
 
-    def test_register_duplicate_names_error(self):
+    async def test_register_duplicate_names_error(self):
         async def task():
             ...
 
@@ -50,8 +72,7 @@ class TestCase(IsolatedAsyncioTestCase):
         await Manager.shutdown()
         await asyncio.gather(t1)
 
-    def test_state(self):
-
+    async def test_state(self):
         state = Manager.state()
 
         self.assertEqual(2, len(state.jobs_info))

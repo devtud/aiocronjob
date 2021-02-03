@@ -2,19 +2,13 @@ import asyncio
 import functools
 from collections import deque
 
+from aiocronjob.models import RealTimeInfo
 from crontab import CronTab
-from dataclasses import dataclass
 
 from .logger import logger
 from .models import JobDefinition, RunningJob, JobLog, JobInfo, JobStatus, State
 from .typing import Callable, Optional, Coroutine, List, Dict, Deque
 from .util import now
-
-
-@dataclass
-class RealTimeInfo:
-    status: JobStatus
-    next_run_ts: Optional[int]
 
 
 class Manager:
@@ -28,6 +22,15 @@ class Manager:
     # _load_from_state: State
 
     _cleanup_tasks: List[asyncio.Task] = []
+
+    @classmethod
+    def clear(cls):
+        if cls._is_running or cls._is_shutting_down:
+            raise Exception("Cannot clear before shutdown")
+        cls._definitions: Dict[str, JobDefinition] = {}
+        cls._real_time: Dict[str, RealTimeInfo] = {}
+        cls._running_jobs: Dict[str, RunningJob] = {}
+        cls._log_queue: Deque[JobLog] = deque()
 
     @classmethod
     def register(

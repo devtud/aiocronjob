@@ -1,48 +1,50 @@
 import asyncio
+from unittest import mock
 
-from aiocronjob import app, manager
+from aiocronjob import app, Manager
 from starlette.testclient import TestClient
+
+from .common import IsolatedAsyncioTestCase
 
 client = TestClient(app=app)
 
 
-def test_list_jobs(mocker):
-    some_datetime = "2020-06-06T08:39:14.065188+00:00"
-    mock = mocker.patch("aiocronjob.job.now")
-    mock.return_value = some_datetime
+class TestApi(IsolatedAsyncioTestCase):
+    def test_list_jobs(self):
+        self.maxDiff = None
 
-    async def task1():
-        await asyncio.sleep(5)
+        async def task1():
+            await asyncio.sleep(5)
 
-    async def task2():
-        await asyncio.sleep(5)
+        async def task2():
+            await asyncio.sleep(5)
 
-    manager.register(task1)
-    manager.register(task2)
+        Manager.register(task1)
+        Manager.register(task2)
 
-    response = client.get("/api/jobs")
+        response = client.get("/api/jobs")
 
-    desired_output = [
-        {
-            "name": "Job_0-task1",
-            "next_run_in": None,
-            "last_status": "created",
-            "enabled": "True",
-            "crontab": "",
-            "created_at": some_datetime,
-            "started_at": None,
-            "stopped_at": None,
-        },
-        {
-            "name": "Job_1-task2",
-            "next_run_in": None,
-            "last_status": "created",
-            "enabled": "True",
-            "crontab": "",
-            "created_at": some_datetime,
-            "started_at": None,
-            "stopped_at": None,
-        },
-    ]
+        desired_output = [
+            {
+                "name": "task1",
+                "next_run_in": None,
+                "last_status": "registered",
+                "enabled": True,
+                "crontab": None,
+                "created_at": mock.ANY,
+                "started_at": mock.ANY,
+                "stopped_at": mock.ANY,
+            },
+            {
+                "name": "task2",
+                "next_run_in": None,
+                "last_status": "registered",
+                "enabled": True,
+                "crontab": None,
+                "created_at": mock.ANY,
+                "started_at": mock.ANY,
+                "stopped_at": mock.ANY,
+            },
+        ]
 
-    assert response.json() == desired_output
+        self.assertEqual(desired_output, response.json())
