@@ -1,8 +1,8 @@
 import datetime
 from asyncio.tasks import Task
 
-from dataclasses import dataclass, field
-from pydantic import BaseModel
+from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from .typing import Literal, Coroutine, Callable, Optional, List
 
@@ -37,14 +37,15 @@ class RunningJob:
     since: datetime.datetime
 
 
-@dataclass
-class JobLog:
+class JobLog(BaseModel):
     event_name: Literal[
         "job_registered", "job_started", "job_failed", "job_finished", "job_cancelled"
     ]
-    job_definition: JobDefinition
+    job_name: str
+    crontab: str = None
+    enabled: bool
     error: str = None
-    timestamp: int = field(default_factory=lambda: datetime.datetime.now().timestamp())
+    timestamp: int = Field(default_factory=lambda: datetime.datetime.now().timestamp())
 
 
 @dataclass

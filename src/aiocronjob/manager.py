@@ -2,6 +2,11 @@ import asyncio
 import functools
 from collections import deque
 
+from aiocronjob.exceptions import (
+    JobNotFoundException,
+    JobAlreadyRunningException,
+    JobNotRunningException,
+)
 from aiocronjob.models import RealTimeInfo
 from crontab import CronTab
 
@@ -22,6 +27,15 @@ class Manager:
     # _load_from_state: State
 
     _cleanup_tasks: List[asyncio.Task] = []
+
+    @classmethod
+    async def generate_logs(cls):
+        last_index = 0
+        while True:
+            for i in range(last_index, len(cls._log_queue)):
+                yield cls._log_queue[i]
+            last_index = len(cls._log_queue)
+            await asyncio.sleep(1)
 
     @classmethod
     def clear(cls):
@@ -49,7 +63,14 @@ class Manager:
         cls._definitions[name] = definition
         cls._real_time[name] = RealTimeInfo(status="registered", next_run_ts=None)
 
-        cls._log_event(JobLog(event_name="job_registered", job_definition=definition))
+        cls._log_event(
+            JobLog(
+                event_name="job_registered",
+                job_name=definition.name,
+                crontab=definition.crontab,
+                enabled=definition.enabled,
+            )
+        )
 
     @classmethod
     def _log_event(cls, log_event: JobLog):
@@ -63,7 +84,7 @@ class Manager:
         if definition:
             return definition
         if raise_not_found:
-            raise Exception("job not found")
+            raise JobNotFoundException("job not found")
         return None
 
     @classmethod
@@ -74,7 +95,7 @@ class Manager:
         if running_job:
             return running_job
         if raise_not_found:
-            raise Exception("job not running")
+            raise JobNotRunningException("job not running")
         return None
 
     @classmethod
@@ -94,7 +115,7 @@ class Manager:
     def _get_job_status(cls, name: str) -> JobStatus:
         rt_info = cls._real_time.get(name)
         if not rt_info:
-            raise Exception("job not found")
+            raise JobNotFoundException("job not found")
         return rt_info.status
 
     @classmethod
@@ -118,7 +139,7 @@ class Manager:
     def start_job(cls, name: str) -> None:
         definition = cls._get_job_definition(name, True)
         if cls._get_running_job(name):
-            raise Exception("job already running")
+            raise JobAlreadyRunningException("job already running")
         running_job = RunningJob(
             job_definition=definition,
             asyncio_task=asyncio.get_event_loop().create_task(
@@ -148,7 +169,12 @@ class Manager:
             exception = task.exception()
         except asyncio.CancelledError:
             cls._log_event(
-                JobLog(event_name="job_cancelled", job_definition=definition)
+                JobLog(
+                    event_name="job_cancelled",
+                    job_name=definition.name,
+                    crontab=definition.crontab,
+                    enabled=definition.enabled,
+                )
             )
             cls._real_time[job_name] = RealTimeInfo(
                 status="cancelled", next_run_ts=None
@@ -161,7 +187,9 @@ class Manager:
             cls._log_event(
                 JobLog(
                     event_name="job_failed",
-                    job_definition=definition,
+                    job_name=definition.name,
+                    crontab=definition.crontab,
+                    enabled=definition.enabled,
                     error=str(exception),
                 )
             )
@@ -175,7 +203,9 @@ class Manager:
         cls._log_event(
             JobLog(
                 event_name="job_finished",
-                job_definition=definition,
+                job_name=definition.name,
+                crontab=definition.crontab,
+                enabled=definition.enabled,
             )
         )
         cls._real_time[job_name] = RealTimeInfo(
@@ -190,10 +220,13 @@ class Manager:
 
     @classmethod
     async def _on_job_started(cls, job_name: str):
+        definition = cls._get_job_definition(job_name)
         cls._log_event(
             JobLog(
                 event_name="job_started",
-                job_definition=cls._get_job_definition(job_name),
+                job_name=definition.name,
+                crontab=definition.crontab,
+                enabled=definition.enabled,
             )
         )
         await cls.on_job_started(job_name)

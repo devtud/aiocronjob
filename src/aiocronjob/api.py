@@ -1,16 +1,22 @@
 from pathlib import Path
-from typing import List
 
-from aiocronjob.job import JobInfo
-from aiocronjob.logger import logger
-from aiocronjob.manager import manager
-from fastapi import FastAPI, HTTPException, APIRouter, Body
+from aiocronjob.exceptions import (
+    JobNotFoundException,
+    JobNotRunningException,
+    JobAlreadyRunningException,
+)
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
 
-app = FastAPI(title="AIOCronJob", version="0.2.0")
+from .logger import logger
+from .manager import Manager
+from .models import JobInfo
+from .typing import List
+
+app = FastAPI(title="AIOCronJob", version="0.3.0")
 
 api_router = APIRouter()
 
@@ -26,12 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    if manager.on_shutdown:
-        await manager.on_shutdown()
 
 
 @api_router.get("/")
@@ -55,64 +55,46 @@ class OperationStatusResponse(JSONResponse):
 @api_router.get("/jobs", response_model=List[JobInfo])
 async def get_jobs() -> List[JobInfo]:
     """ List all registered jobs info """
-    return [job.info() for job in manager.list_jobs()]
+    return Manager.get_all_jobs_info()
 
 
 @api_router.get("/jobs/{job_name}", response_model=JobInfo)
 async def get_job_info(job_name: str) -> JobInfo:
     """ Get a job info """
-    job = manager.get_job(job_name)
-    if not job:
+    job_info = Manager.get_job_info(job_name)
+    if not job_info:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job.info()
+    return job_info
 
 
 @api_router.get("/jobs/{job_name}/cancel", response_model=OperationStatus)
 async def cancel_job(job_name: str) -> OperationStatusResponse:
-    job = manager.get_job(job_name)
-    if not job:
-        return OperationStatusResponse(
-            success=False, status_code=404, detail="Job not found"
-        )
-    job.cancel()
-    return OperationStatusResponse()
+    try:
+        cancelled = await Manager.cancel_job(job_name)
+    except JobNotFoundException:
+        raise HTTPException(status_code=404, detail="Job not found")
+    except JobNotRunningException as e:
+        return OperationStatusResponse(success=False, status_code=402, detail=str(e))
+
+    return OperationStatusResponse(success=cancelled, status_code=200)
 
 
 @api_router.get("/jobs/{job_name}/start", response_model=OperationStatus)
 async def start_job(job_name: str) -> OperationStatusResponse:
-    job = manager.get_job(job_name)
-    if not job:
-        return OperationStatusResponse(
-            success=False, status_code=404, detail="Job not found"
-        )
-
-    job.schedule(immediately=True, ignore_pending=True)
+    try:
+        Manager.start_job(job_name)
+    except JobNotFoundException:
+        raise HTTPException(status_code=404, detail="Job not found")
+    except JobAlreadyRunningException as e:
+        return OperationStatusResponse(success=False, status_code=402, detail=str(e))
 
     return OperationStatusResponse()
 
 
-@api_router.post("/jobs/{job_name}/reschedule", response_model=OperationStatus)
-async def reschedule_job(
-    job_name: str, crontab: str = Body("")
-) -> OperationStatusResponse:
-    """ Changes the crontab specification of a job. In case of a running job, the new
-    crontab will be effective after the job is done.
-    """
-    job = manager.get_job(job_name)
-    if not job:
-        return OperationStatusResponse(
-            success=False, status_code=404, detail="Job not found"
-        )
-    if crontab:
-        try:
-            job.set_crontab(crontab=crontab)
-        except ValueError as e:
-            return OperationStatusResponse(
-                success=False, status_code=400, detail=f"Bad crontab format: {str(e)}"
-            )
-    if job.get_status() != "running":
-        job.schedule(ignore_pending=True)
-    return OperationStatusResponse()
+@api_router.get("/log-stream")
+async def stream_logs():
+    log_generator = Manager.generate_logs()
+    return StreamingResponse(f"{log.json()}\n" async for log in log_generator)
 
 
 app.include_router(api_router, prefix="/api", tags=["api"])
