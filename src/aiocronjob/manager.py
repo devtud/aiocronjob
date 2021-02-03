@@ -199,12 +199,20 @@ class Manager:
         await cls.on_job_started(job_name)
 
     @classmethod
-    async def run(cls):
+    async def run(cls, state: State = None):
         if cls._is_running:
             logger.warning("Ignoring current calling of run(). Already running.")
             return
 
         cls._is_running = True
+
+        if state:
+            for job_info in state.jobs_info:
+                if job_info.name in cls._definitions:
+                    cls._definitions[job_info.name].crontab = job_info.crontab
+                    cls._definitions[job_info.name].enabled = job_info.enabled
+
+                    cls._real_time[job_info.name].status = job_info.last_status
 
         await cls._run_ad_infinitum()
 
@@ -277,27 +285,3 @@ class Manager:
     def state(cls) -> State:
         state = State(created_at=now(), jobs_info=cls.get_all_jobs_info())
         return state
-
-    # @classmethod
-    # def load_state(cls, state: State):
-    #     cls._load_from_state = state
-
-    # @classmethod
-    # def run_from_state(cls, state: State, resumed_statuses: Tuple = ("running",)):
-    #     if cls._is_running:
-    #         raise Exception(f"Registered jobs were already scheduled.")
-    #
-    #     Job.add_done_callback(cls._handle_done_job)
-    #
-    #     to_be_scheduled = set(cls._jobs.keys())
-    #
-    #     for job_info in state.jobs_info:
-    #         if job_info.name not in to_be_scheduled:
-    #             logger.warning(f"Job {job_info.name} not found. Ignoring...")
-    #         else:
-    #             schedule_immediately = job_info.last_status in resumed_statuses
-    #             cls._jobs[job_info.name].schedule(immediately=schedule_immediately)
-    #             to_be_scheduled.remove(job_info.name)
-    #     if len(to_be_scheduled) > 0:
-    #         for job_name in to_be_scheduled:
-    #             cls._jobs[job_name].schedule()
