@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import {ActionSheet, Badge, Button, List, NavBar, Tabs, Toast} from 'antd-mobile';
 
-type JobStatus = "running" | "error" | "pending" | "done";
+type JobStatus = "running" | "failed" | "pending" | "done";
 
 type Job = {
     name: string,
@@ -62,7 +62,7 @@ class JobsView extends React.Component<{}, State> {
                 color = '#000';
                 break;
             }
-            case "error": {
+            case "failed": {
                 color = 'red';
                 break;
             }
@@ -116,14 +116,14 @@ class JobsView extends React.Component<{}, State> {
     }
 
     render() {
-        const errors = this.state.jobs.filter(job => job.last_status === "error");
+        const errors = this.state.jobs.filter(job => job.last_status === "failed");
         const done = this.state.jobs.filter(job => job.last_status === "done");
         const running = this.state.jobs.filter(job => job.last_status === "running");
 
         const tabs = [
             {title: <Badge text={this.state.jobs.length}>All</Badge>},
             {title: <Badge text={running.length}>Running</Badge>},
-            {title: <Badge text={errors.length}>Error</Badge>},
+            {title: <Badge text={errors.length}>Failed</Badge>},
             {title: <Badge text={done.length}>Done</Badge>},
         ];
 
