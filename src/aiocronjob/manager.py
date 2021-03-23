@@ -231,6 +231,7 @@ class Manager:
             return
 
         self._is_running = True
+        await self.on_startup()
 
         if state:
             for job_info in state.jobs_info:
@@ -277,6 +278,8 @@ class Manager:
 
         await asyncio.gather(*self._cleanup_tasks)
         logger.debug("Cleanup tasks finished.")
+
+        await self.on_shutdown()
 
         self._is_running = False
         self._is_shutting_down = False

@@ -12,16 +12,11 @@ from .logger import logger
 from .manager import Manager
 from .models import State
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-]
-
 
 def init_app(app: FastAPI, manager: Manager):
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -61,11 +56,10 @@ def run_app(
             version="0.3.0",
         )
 
+    init_app(fastapi_app, manager)
+
     @fastapi_app.on_event("startup")
     async def init():
-        if manager.on_startup:
-            await manager.on_startup()
-
         _main_task["task"] = asyncio.get_event_loop().create_task(
             manager.run(state=state),
         )
