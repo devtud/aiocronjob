@@ -6,6 +6,8 @@
 ![PyPI - License](https://img.shields.io/pypi/l/aiocronjob?style=flat-square)
 ![GitHub last commit](https://img.shields.io/github/last-commit/devtud/aiocronjob?style=flat-square)
 ![PyPI - Status](https://img.shields.io/pypi/status/aiocronjob?style=flat-square)
+[![Tests](https://github.com/devtud/aiocronjob/workflows/Tests/badge.svg)](https://github.com/devtud/aiocronjob/actions?workflow=Tests)
+[![Codecov](https://codecov.io/gh/devtud/aiocronjob/branch/main/graph/badge.svg)](https://codecov.io/gh/devtud/aiocronjob)
 
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
@@ -19,57 +21,8 @@ pip3 install aiocronjob
 
 ### Usage example
 
-```python
-# examples/simple_tasks.py
+See [examples/simple_tasks.py](/examples/simple_tasks.py)
 
-import asyncio
-
-from aiocronjob import manager, Job
-from aiocronjob import run_app
-
-
-async def first_task():
-    for i in range(20):
-        print("first task log", i)
-        await asyncio.sleep(1)
-
-
-async def second_task():
-    for i in range(10):
-        await asyncio.sleep(1.5)
-        print("second task log", i)
-    raise Exception("second task exception")
-
-
-manager.register(first_task, name="First task", crontab="22 * * * *")
-
-manager.register(second_task, name="Second task", crontab="23 * * * *")
-
-
-async def on_job_exception(job: Job, exc: BaseException):
-    print(f"An exception occurred for job {job.name}: {exc}")
-
-
-async def on_job_cancelled(job: Job):
-    print(f"{job.name} was cancelled...")
-
-
-async def on_startup():
-    print("The app started.")
-
-
-async def on_shutdown():
-    print("The app stopped.")
-
-
-manager.set_on_job_cancelled_callback(on_job_cancelled)
-manager.set_on_job_exception_callback(on_job_exception)
-manager.set_on_shutdown_callback(on_shutdown)
-manager.set_on_startup_callback(on_startup)
-
-if __name__ == "__main__":
-    run_app()
-```
 
 After running the app, the [FastAPI](https://fastapi.tiangolo.com) server runs at `localhost:5000`.
 
@@ -137,7 +90,9 @@ $ poetry install
 #### Run backend tests
 
 ```bash
-poetry run pytest --cov -s
+poetry run coverage run -m unittest discover
+
+poetry run coverage report -m
 ```
 
 #### Run backend example
