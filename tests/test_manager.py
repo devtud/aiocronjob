@@ -6,21 +6,7 @@ from aiocronjob.manager import Manager
 from .common import IsolatedAsyncioTestCase
 
 
-class TestCase(IsolatedAsyncioTestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        if not hasattr(cls, "loop"):
-            policy = asyncio.get_event_loop_policy()
-            res = policy.new_event_loop()
-            asyncio.set_event_loop(res)
-            res._close = res.close
-            res.close = lambda: None
-            cls.loop = res
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls.loop._close()
-
+class TestManager(IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         async def task1():
             ...
@@ -41,10 +27,6 @@ class TestCase(IsolatedAsyncioTestCase):
 
     def tearDown(self) -> None:
         self.get_event_loop().run_until_complete(self.manager.shutdown())
-
-    def get_event_loop(self):
-        self.__class__.setUpClass()
-        return self.__class__.loop
 
     async def test_register(self):
         self.assertEqual(

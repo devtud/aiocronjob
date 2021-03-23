@@ -1,16 +1,26 @@
 import asyncio
+import httpx
 from unittest import mock
 
-from aiocronjob import app, Manager
-from starlette.testclient import TestClient
+from aiocronjob import Manager
+from aiocronjob.main import init_app
+from fastapi import FastAPI
 
 from .common import IsolatedAsyncioTestCase
 
-client = TestClient(app=app)
-
 
 class TestApi(IsolatedAsyncioTestCase):
-    def test_list_jobs(self):
+    def setUp(self) -> None:
+        self.manager = Manager()
+        fastapi_app = FastAPI()
+        init_app(fastapi_app, manager=self.manager)
+        self.client = httpx.AsyncClient(app=fastapi_app, base_url="http://example.com")
+
+    def tearDown(self) -> None:
+        self.get_event_loop().run_until_complete(self.manager.shutdown())
+        self.get_event_loop().run_until_complete(self.client.aclose())
+
+    async def test_list_jobs(self):
         self.maxDiff = None
 
         async def task1():
@@ -19,10 +29,10 @@ class TestApi(IsolatedAsyncioTestCase):
         async def task2():
             await asyncio.sleep(5)
 
-        Manager.register(task1)
-        Manager.register(task2)
+        self.manager.register(task1)
+        self.manager.register(task2)
 
-        response = client.get("/api/jobs")
+        response = await self.client.get("/api/jobs")
 
         desired_output = [
             {
