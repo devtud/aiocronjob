@@ -8,6 +8,7 @@ def tests(session: Session) -> None:
     session.run("pip", "--version")
     session.run("poetry", "lock")
     session.install(".")
+    session.install("httpx")
 
     if session.python in ["3.6", "3.7"]:
         session.install("aiounittest")
@@ -21,5 +22,8 @@ def coverage(session: Session) -> None:
     session.install(".")
     session.install("coverage[toml]")
     session.install("codecov")
+    session.install("httpx")
+    if session.python in ["3.6", "3.7"]:
+        session.install("aiounittest")
     session.run("coverage", "run", "-m", "unittest", "discover")
     session.run("codecov", *session.posargs)
