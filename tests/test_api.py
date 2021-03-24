@@ -1,7 +1,7 @@
 import asyncio
-import httpx
 from unittest import mock
 
+import httpx
 from aiocronjob import Manager
 from aiocronjob.main import init_app
 from fastapi import FastAPI
