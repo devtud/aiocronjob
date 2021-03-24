@@ -21,7 +21,7 @@ pip3 install aiocronjob
 
 ### Usage example
 
-See [examples/simple_tasks.py](/examples/simple_tasks.py)
+See [examples/simple_tasks.py](https://github.com/devtud/aiocronjob/blob/master/examples/simple_tasks.py)
 
 
 After running the app, the [FastAPI](https://fastapi.tiangolo.com) server runs at `localhost:5000`.
