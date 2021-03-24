@@ -13,10 +13,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
-    - run: pip install nox==2020.12.31
-    - run: pip install poetry==1.1.5
-    - run: pip install nox-poetry==0.7.0
-    - run: nox
+    - run: python -m unittest discover
   coverage:
     runs-on: ubuntu-latest
     name: Coverage Python 3.9
@@ -26,7 +23,5 @@ jobs:
       with:
         python-version: '3.9'
         architecture: x64
-    - run: pip install nox==2020.12.31
-    - run: pip install poetry==1.1.5
-    - run: pip install nox-poetry==0.7.0
-    - run: nox --sessions coverage-3.9
+    - run: coverage run -m unittest discover
+    - run: codecov
