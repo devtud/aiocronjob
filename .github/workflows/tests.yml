@@ -23,5 +23,5 @@ jobs:
         run: poetry run coverage run -m unittest discover
         if: matrix.python-version == '3.9'
       - name: Upload coverage report to codecov
-        uses: codecov/codecov-action@v1
+        run: poetry run codecov
         if: matrix.python-version == '3.9'
