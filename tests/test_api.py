@@ -17,8 +17,8 @@ class TestApi(IsolatedAsyncioTestCase):
         self.client = httpx.AsyncClient(app=fastapi_app, base_url="http://example.com")
 
     def tearDown(self) -> None:
-        self.get_event_loop().run_until_complete(self.manager.shutdown())
-        self.get_event_loop().run_until_complete(self.client.aclose())
+        asyncio.get_event_loop().run_until_complete(self.manager.shutdown())
+        asyncio.get_event_loop().run_until_complete(self.client.aclose())
 
     async def test_list_jobs(self):
         self.maxDiff = None
