@@ -1,9 +1,8 @@
 import datetime
 from asyncio.tasks import Task
-
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 from .typing import Literal, Coroutine, Callable, Optional, List
 
 JobStatus = Literal[
@@ -22,8 +21,7 @@ class JobInfo(BaseModel):
     next_run_in: int = None
 
 
-@dataclass
-class JobDefinition:
+class JobDefinition(BaseModel):
     name: str
     async_callable: Callable[[], Coroutine]
     enabled: bool = True
@@ -48,13 +46,11 @@ class JobLog(BaseModel):
     timestamp: int = Field(default_factory=lambda: datetime.datetime.now().timestamp())
 
 
-@dataclass
-class State:
+class State(BaseModel):
     created_at: datetime.datetime
     jobs_info: List[JobInfo]
 
 
-@dataclass
-class RealTimeInfo:
+class RealTimeInfo(BaseModel):
     status: JobStatus
     next_run_ts: Optional[int]
