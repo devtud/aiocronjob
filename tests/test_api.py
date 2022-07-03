@@ -1,12 +1,10 @@
 import asyncio
-from unittest import mock
+from unittest import mock, IsolatedAsyncioTestCase
 
 import httpx
-from aiocronjob import Manager
-from aiocronjob.main import init_app
 from fastapi import FastAPI
-
-from .common import IsolatedAsyncioTestCase
+from src.aiocronjob import Manager
+from src.aiocronjob.main import init_app
 
 
 class TestApi(IsolatedAsyncioTestCase):
@@ -17,8 +15,8 @@ class TestApi(IsolatedAsyncioTestCase):
         self.client = httpx.AsyncClient(app=fastapi_app, base_url="http://example.com")
 
     def tearDown(self) -> None:
-        asyncio.get_event_loop().run_until_complete(self.manager.shutdown())
-        asyncio.get_event_loop().run_until_complete(self.client.aclose())
+        asyncio.run(self.manager.shutdown())
+        asyncio.run(self.client.aclose())
 
     async def test_list_jobs(self):
         self.maxDiff = None

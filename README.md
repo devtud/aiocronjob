@@ -11,7 +11,7 @@
 
 Schedule and run `asyncio` coroutines and manage them from a web interface or programmatically using the rest api.
 
-### Requires python >= 3.6
+### Requires python >= 3.8
 
 ### How to install
 
@@ -72,7 +72,7 @@ $ curl http://0.0.0.0:5000/api/jobs
 ### Development
 
 **Requirements**:
-- **Python** >= 3.6 and **Poetry** for backend
+- **Python** >= 3.8 and **PDM** for backend
 - **npm** for frontend
 
 The frontend is a separate Single Page Application (SPA), so the backend does not depend on it. It just calls the backend's API endpoints.
@@ -84,21 +84,21 @@ $ git clone https://github.com/devtud/aiocronjob.git
 
 $ cd aiocronjob
 
-$ poetry install
+$ pdm sync
 ```
 
 #### Run backend tests
 
 ```bash
-poetry run coverage run -m unittest discover
+pdm run coverage run -m unittest discover
 
-poetry run coverage report -m
+pdm run coverage report -m
 ```
 
 #### Run backend example
 
 ```bash
-poetry run python examples/simple_tasks.py
+pdm run python examples/simple_tasks.py
 ```
 
 `uvicorn` will run the `FastAPI` app at http://localhost:5000.

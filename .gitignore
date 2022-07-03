@@ -120,3 +120,5 @@ dmypy.json
 .vscode/
 Pipfile.lock
 
+.pdm.toml
+__pypackages__

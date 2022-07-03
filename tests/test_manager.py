@@ -1,9 +1,8 @@
 import asyncio
+from unittest import IsolatedAsyncioTestCase
 
-from aiocronjob.logger import logger
-from aiocronjob.manager import Manager
-
-from .common import IsolatedAsyncioTestCase
+from src.aiocronjob.logger import logger
+from src.aiocronjob.manager import Manager
 
 
 class TestManager(IsolatedAsyncioTestCase):
