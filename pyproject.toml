@@ -58,7 +58,7 @@ build-backend = "pdm.pep517.api"
 
 [project]
 name = "aiocronjob"
-version = "0.4.1"
+version = "0.4.2"
 description = "Schedule async tasks and manage them using a REST API or WEB UI"
 authors = [
     { name = "devtud", email = "devtud@gmail.com" },
@@ -77,8 +77,18 @@ maintainers = [
     { name = "devtud", email = "devtud@gmail.com" },
 ]
 keywords = ["async tasks", "crontab", "rest api"]
-#classifiers = [
-#    "Development Status :: 3 - Alpha", "Framework :: AsyncIO", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Programming Language :: Python :: 3 :: Only", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Programming Language :: Python :: 3.10", "Topic :: Internet :: WWW/HTTP :: HTTP Servers", "Topic :: Software Development :: Libraries :: Application Frameworks"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
 
 [project.urls]
 homepage = "https://github.com/devtud/aiocronjob"
