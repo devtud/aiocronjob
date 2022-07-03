@@ -40,8 +40,9 @@ exclude = '''
 )
 '''
 
-[tool.pdm]
-includes = ["README.md", "src/aiocronjob/build/**/*"]
+[tool.pdm.build]
+includes = ["README.md", "src/aiocronjob/"]
+excludes = ["tests/"]
 
 [tool.pdm.dev-dependencies]
 dev = [
@@ -57,7 +58,7 @@ build-backend = "pdm.pep517.api"
 
 [project]
 name = "aiocronjob"
-version = "0.3.0"
+version = "0.4.1"
 description = "Schedule async tasks and manage them using a REST API or WEB UI"
 authors = [
     { name = "devtud", email = "devtud@gmail.com" },
