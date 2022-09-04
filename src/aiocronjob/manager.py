@@ -83,30 +83,23 @@ class Manager:
             )
         )
 
-    def _get_job_definition(
-        self, name: str, raise_not_found: bool = False
-    ) -> Optional[JobDefinition]:
-        definition = self._definitions.get(name)
-        if definition:
-            return definition
-        if raise_not_found:
-            raise JobNotFoundException
-        return None
+    def _get_job_definition(self, name: str) -> JobDefinition:
+        try:
+            return self._definitions[name]
+        except KeyError as e:
+            raise JobNotFoundException from e
 
-    def _get_running_job(
-        self, name: str, raise_not_found: bool = False
-    ) -> Optional[RunningJob]:
-        running_job = self._running_jobs.get(name)
-        if running_job:
-            return running_job
-        if raise_not_found:
-            raise JobNotRunningException
-        return None
+    def _get_running_job(self, name: str) -> RunningJob:
+        try:
+            return self._running_jobs[name]
+        except KeyError as e:
+            raise JobNotRunningException from e
 
-    def get_job_info(self, name: str) -> Optional[JobInfo]:
+    def _is_job_running(self, name: str) -> bool:
+        return name in self._running_jobs
+
+    def get_job_info(self, name: str) -> JobInfo:
         definition = self._get_job_definition(name)
-        if not definition:
-            return None
         return JobInfo(
             name=definition.name,
             enabled=definition.enabled,
@@ -122,24 +115,12 @@ class Manager:
         return rt_info.status
 
     def _get_job_next_run_in(self, name: str) -> Optional[int]:
-        definition = self._get_job_definition(name, True)
+        definition = self._get_job_definition(name)
         if definition.crontab is None:
             return None
         return CronTab(definition.crontab).next(default_utc=True)
 
-    async def cancel_job(self, name: str):
-        logger.info(f"Cancelling {name}")
-        self._get_job_definition(name, True)
-        running_job = self._get_running_job(name, True)
-        cancelled = running_job.asyncio_task.cancel()
-        # if cancelled:
-        #     await cls.on_job_cancelled(name)
-        return cancelled
-
-    def start_job(self, name: str) -> None:
-        definition = self._get_job_definition(name, True)
-        if self._get_running_job(name):
-            raise JobAlreadyRunningException("job already running")
+    def _create_running_job(self, definition: JobDefinition) -> RunningJob:
         running_job = RunningJob(
             job_definition=definition,
             asyncio_task=asyncio.get_event_loop().create_task(
@@ -148,8 +129,25 @@ class Manager:
             since=now().timestamp(),
         )
         running_job.asyncio_task.add_done_callback(
-            functools.partial(self._on_job_done, name)
+            functools.partial(self._on_job_done, definition.name)
         )
+        return running_job
+
+    async def cancel_job(self, name: str):
+        logger.info(f"Cancelling {name}")
+        self._get_job_definition(name)
+        running_job = self._get_running_job(name)
+        cancelled = running_job.asyncio_task.cancel()
+        # if cancelled:
+        #     await cls.on_job_cancelled(name)
+        return cancelled
+
+    def start_job(self, name: str) -> None:
+        if self._is_job_running(name):
+            raise JobAlreadyRunningException("job already running")
+
+        definition = self._get_job_definition(name)
+        running_job = self._create_running_job(definition)
         self._running_jobs[definition.name] = running_job
         self._real_time[name] = JobRealTimeInfo(
             name=name,
