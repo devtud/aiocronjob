@@ -242,8 +242,9 @@ class Manager:
                     and rt_info.next_run_ts <= this_time_ts
                 ):
                     self.start_job(job_name)
-
-                else:  # rt_info.status in ["running", "cancelled", "failed"]:
+                elif rt_info.status == "running" and not self._is_job_running(job_name):
+                    self.start_job(job_name)
+                else:  # rt_info.status in ["cancelled", "failed"]:
                     ...
             await asyncio.sleep(1.5)
 
