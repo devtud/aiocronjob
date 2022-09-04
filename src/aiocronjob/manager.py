@@ -3,7 +3,6 @@ import functools
 from collections import deque
 
 from crontab import CronTab
-
 from .exceptions import (
     JobNotFoundException,
     JobAlreadyRunningException,
@@ -18,6 +17,7 @@ from .models import (
     JobStatus,
     State,
     RealTimeInfo,
+    EventType,
 )
 from .typing import Callable, Optional, Coroutine, List, Dict, Deque
 from .util import now
@@ -44,7 +44,7 @@ class Manager:
             await asyncio.sleep(1)
 
     def clear(self):
-        """ Resets the """
+        """Resets the"""
         if self._is_running or self._is_shutting_down:
             raise Exception("Cannot clear before shutdown")
         self._definitions: Dict[str, JobDefinition] = {}
@@ -68,17 +68,18 @@ class Manager:
         self._definitions[name] = definition
         self._real_time[name] = RealTimeInfo(status="registered", next_run_ts=None)
 
-        self._log_event(
+        self._log_event("job_registered", definition.name)
+
+    def _log_event(self, event_type: EventType, job_name: str, error: str = None):
+        self._log_queue.append(
             JobLog(
-                event_name="job_registered",
-                job_name=definition.name,
-                crontab=definition.crontab,
-                enabled=definition.enabled,
+                event_type=event_type,
+                job_name=job_name,
+                crontab=self._definitions[job_name].crontab,
+                enabled=self._definitions[job_name].enabled,
+                error=error,
             )
         )
-
-    def _log_event(self, log_event: JobLog):
-        self._log_queue.append(log_event)
 
     def _get_job_definition(
         self, name: str, raise_not_found: bool = False
@@ -87,7 +88,7 @@ class Manager:
         if definition:
             return definition
         if raise_not_found:
-            raise JobNotFoundException("job not found")
+            raise JobNotFoundException
         return None
 
     def _get_running_job(
@@ -97,7 +98,7 @@ class Manager:
         if running_job:
             return running_job
         if raise_not_found:
-            raise JobNotRunningException("job not running")
+            raise JobNotRunningException
         return None
 
     def get_job_info(self, name: str) -> Optional[JobInfo]:
@@ -163,14 +164,8 @@ class Manager:
         try:
             exception = task.exception()
         except asyncio.CancelledError:
-            self._log_event(
-                JobLog(
-                    event_name="job_cancelled",
-                    job_name=definition.name,
-                    crontab=definition.crontab,
-                    enabled=definition.enabled,
-                )
-            )
+            self._log_event("job_cancelled", definition.name)
+
             self._real_time[job_name] = RealTimeInfo(
                 status="cancelled", next_run_ts=None
             )
@@ -179,15 +174,8 @@ class Manager:
             return
 
         if exception:
-            self._log_event(
-                JobLog(
-                    event_name="job_failed",
-                    job_name=definition.name,
-                    crontab=definition.crontab,
-                    enabled=definition.enabled,
-                    error=str(exception),
-                )
-            )
+            self._log_event("job_failed", definition.name, error=str(exception))
+
             self._real_time[job_name] = RealTimeInfo(status="failed", next_run_ts=None)
             task = asyncio.get_event_loop().create_task(
                 self.on_job_exception(job_name, exception)
@@ -195,14 +183,8 @@ class Manager:
             self._cleanup_tasks.append(task)
             return
 
-        self._log_event(
-            JobLog(
-                event_name="job_finished",
-                job_name=definition.name,
-                crontab=definition.crontab,
-                enabled=definition.enabled,
-            )
-        )
+        self._log_event("job_finished", definition.name)
+
         self._real_time[job_name] = RealTimeInfo(
             status="finished",
             next_run_ts=now().timestamp() + self._get_job_next_run_in(job_name)
@@ -215,14 +197,7 @@ class Manager:
 
     async def _on_job_started(self, job_name: str):
         definition = self._get_job_definition(job_name)
-        self._log_event(
-            JobLog(
-                event_name="job_started",
-                job_name=definition.name,
-                crontab=definition.crontab,
-                enabled=definition.enabled,
-            )
-        )
+        self._log_event("job_started", definition.name)
         await self.on_job_started(job_name)
 
     async def run(self, state: State = None):

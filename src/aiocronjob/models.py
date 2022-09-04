@@ -9,6 +9,10 @@ JobStatus = Literal[
     "registered", "running", "finished", "pending", "cancelled", "failed"
 ]
 
+EventType = Literal[
+    "job_registered", "job_started", "job_failed", "job_finished", "job_cancelled"
+]
+
 
 class JobInfo(BaseModel):
     name: str
@@ -36,9 +40,7 @@ class RunningJob:
 
 
 class JobLog(BaseModel):
-    event_name: Literal[
-        "job_registered", "job_started", "job_failed", "job_finished", "job_cancelled"
-    ]
+    event_type: EventType
     job_name: str
     crontab: str = None
     enabled: bool
