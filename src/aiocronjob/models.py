@@ -53,6 +53,7 @@ class State(BaseModel):
     jobs_info: List[JobInfo]
 
 
-class RealTimeInfo(BaseModel):
+class JobRealTimeInfo(BaseModel):
+    name: str
     status: JobStatus
     next_run_ts: Optional[int]

@@ -7,5 +7,5 @@ from .models import (
     JobStatus,
     RunningJob,
     JobDefinition,
-    RealTimeInfo,
+    JobRealTimeInfo,
 )

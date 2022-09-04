@@ -16,7 +16,7 @@ from .models import (
     JobInfo,
     JobStatus,
     State,
-    RealTimeInfo,
+    JobRealTimeInfo,
     EventType,
 )
 from .typing import Callable, Optional, Coroutine, List, Dict, Deque
@@ -26,7 +26,7 @@ from .util import now
 class Manager:
     def __init__(self):
         self._definitions: Dict[str, JobDefinition] = {}
-        self._real_time: Dict[str, RealTimeInfo] = {}
+        self._real_time: Dict[str, JobRealTimeInfo] = {}
         self._running_jobs: Dict[str, RunningJob] = {}
         self._log_queue: Deque[JobLog] = deque()
 
@@ -48,7 +48,7 @@ class Manager:
         if self._is_running or self._is_shutting_down:
             raise Exception("Cannot clear before shutdown")
         self._definitions: Dict[str, JobDefinition] = {}
-        self._real_time: Dict[str, RealTimeInfo] = {}
+        self._real_time: Dict[str, JobRealTimeInfo] = {}
         self._running_jobs: Dict[str, RunningJob] = {}
         self._log_queue: Deque[JobLog] = deque()
 
@@ -66,7 +66,9 @@ class Manager:
             name=name, async_callable=async_callable, crontab=crontab, enabled=True
         )
         self._definitions[name] = definition
-        self._real_time[name] = RealTimeInfo(status="registered", next_run_ts=None)
+        self._real_time[name] = JobRealTimeInfo(
+            name=name, status="registered", next_run_ts=None
+        )
 
         self._log_event("job_registered", definition.name)
 
@@ -149,7 +151,8 @@ class Manager:
             functools.partial(self._on_job_done, name)
         )
         self._running_jobs[definition.name] = running_job
-        self._real_time[name] = RealTimeInfo(
+        self._real_time[name] = JobRealTimeInfo(
+            name=name,
             status="running",
             next_run_ts=now().timestamp() + (self._get_job_next_run_in(name) or 0),
         )
@@ -166,8 +169,8 @@ class Manager:
         except asyncio.CancelledError:
             self._log_event("job_cancelled", definition.name)
 
-            self._real_time[job_name] = RealTimeInfo(
-                status="cancelled", next_run_ts=None
+            self._real_time[job_name] = JobRealTimeInfo(
+                name=job_name, status="cancelled", next_run_ts=None
             )
             task = asyncio.get_event_loop().create_task(self.on_job_cancelled(job_name))
             self._cleanup_tasks.append(task)
@@ -176,7 +179,9 @@ class Manager:
         if exception:
             self._log_event("job_failed", definition.name, error=str(exception))
 
-            self._real_time[job_name] = RealTimeInfo(status="failed", next_run_ts=None)
+            self._real_time[job_name] = JobRealTimeInfo(
+                name=job_name, status="failed", next_run_ts=None
+            )
             task = asyncio.get_event_loop().create_task(
                 self.on_job_exception(job_name, exception)
             )
@@ -185,7 +190,8 @@ class Manager:
 
         self._log_event("job_finished", definition.name)
 
-        self._real_time[job_name] = RealTimeInfo(
+        self._real_time[job_name] = JobRealTimeInfo(
+            name=job_name,
             status="finished",
             next_run_ts=now().timestamp() + self._get_job_next_run_in(job_name)
             if definition.crontab
@@ -226,8 +232,10 @@ class Manager:
                 if rt_info.status == "registered":
                     delta: int = self._get_job_next_run_in(job_name) or 0
 
-                    self._real_time[job_name] = RealTimeInfo(
-                        status="pending", next_run_ts=now().timestamp() + delta
+                    self._real_time[job_name] = JobRealTimeInfo(
+                        name=job_name,
+                        status="pending",
+                        next_run_ts=now().timestamp() + delta,
                     )
                 elif (
                     not self._is_shutting_down
