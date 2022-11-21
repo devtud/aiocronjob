@@ -1,8 +1,8 @@
 import asyncio
 from unittest import IsolatedAsyncioTestCase
 
-from src.aiocronjob.logger import logger
-from src.aiocronjob.manager import Manager
+from aiocronjob.logger import logger
+from aiocronjob.manager import Manager
 
 
 class TestManager(IsolatedAsyncioTestCase):
@@ -18,8 +18,8 @@ class TestManager(IsolatedAsyncioTestCase):
         manager.register(async_callable=task1, name="first task")
         manager.register(async_callable=task2, name="second task")
 
-        self.assertEqual("first task", manager._definitions["first task"].name)
-        self.assertEqual("second task", manager._definitions["second task"].name)
+        self.assertEqual("first task", manager._jobs["first task"].definition.name)
+        self.assertEqual("second task", manager._jobs["second task"].definition.name)
 
     async def test_register_duplicate_names_error(self):
         async def task():
@@ -75,4 +75,4 @@ class TestManager(IsolatedAsyncioTestCase):
 
         self.assertEqual(2, len(state.jobs_info))
 
-        self.assertEqual("registered", state.jobs_info[0].last_status)
+        self.assertEqual("registered", state.jobs_info[0]["status"])

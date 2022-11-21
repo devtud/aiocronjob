@@ -3,18 +3,26 @@ source = ["src", "*/site-packages"]
 
 [tool.coverage.run]
 branch = true
-source = ["aiocronjob"]
+source = ["src/aiocronjob"]
 
 [tool.coverage.report]
-fail_under = 100
+fail_under = 98
 precision = 2
 exclude_lines = [
+    "def __repr__",
+    "if self.debug",
     "pragma: not covered",
     "@overload",
     "raise AssertionError",
     "raise NotImplementedError",
     "pass",
-    "except ImportError:"
+    "except ImportError:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(abc.)?abstractmethod",
 ]
 
 [tool.black]
@@ -53,7 +61,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-pep517"]
+requires = ["pdm-pep517>=1.0.0"]
 build-backend = "pdm.pep517.api"
 
 [project]
@@ -64,13 +72,13 @@ authors = [
     { name = "devtud", email = "devtud@gmail.com" },
 ]
 dependencies = [
-    "fastapi>=0.55.1",
     "uvicorn>=0.11.5",
     "crontab>=0.22.8",
     "pytz>=2020.1",
     "aiofiles>=0.5.0",
+    "starlite>=1.40.0",
 ]
-requires-python = ">=3.8, <3.11"
+requires-python = ">=3.8"
 readme = "README.md"
 license = { text = "MIT" }
 maintainers = [

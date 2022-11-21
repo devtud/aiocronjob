@@ -2,79 +2,43 @@ import asyncio
 from pathlib import Path
 from typing import Dict
 
-import uvicorn
-from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
-from starlette.staticfiles import StaticFiles
-
-from .api import add_routes
+from starlite import Starlite, StaticFilesConfig
+from .api import api_router
+from .dependencies import get_manager
 from .logger import logger
-from .manager import Manager
-from .models import State
+
+_main_task: Dict[str, asyncio.Task] = {}
 
 
-def init_app(app: FastAPI, manager: Manager):
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+async def init():
+    manager = get_manager()
+    if not manager:
+        raise Exception("Please call .set_default() method on your custom manager.")
 
-    add_routes(
-        app=app,
-        path="/api",
-        manager=manager,
-    )
-
-    static_dir = Path(__file__).parent.joinpath("build").absolute()
-
-    if static_dir.exists():
-        app.mount(
-            "/",
-            StaticFiles(directory=static_dir, html=True),
-            name="static",
-        )
-    else:
-        logger.warning("Static directory does not exist!")
+    global _main_task
+    _main_task["task"] = asyncio.get_event_loop().create_task(manager.run())
 
 
-def run_app(
-    manager: Manager,
-    fastapi_app: FastAPI = None,
-    state: State = None,
-    host="0.0.0.0",
-    port=5000,
-    log_level="info",
-):
-    _main_task: Dict[str, asyncio.Task] = {}
-
-    if fastapi_app is None:
-        fastapi_app = FastAPI(
-            title="AIOCronJob",
-            version="0.3.0",
-        )
-
-    init_app(fastapi_app, manager)
-
-    @fastapi_app.on_event("startup")
-    async def init():
-        _main_task["task"] = asyncio.get_event_loop().create_task(
-            manager.run(state=state),
-        )
-
-    @fastapi_app.on_event("shutdown")
-    async def shutdown():
-        logger.info("App is shutting down...")
-        logger.info("Shutting down Manager...")
-        await manager.shutdown()
-        logger.info("Shutting down main task...")
+async def shutdown():
+    logger.info("App is shutting down...")
+    logger.info("Shutting down Manager...")
+    manager = get_manager()
+    await manager.shutdown()
+    logger.info("Shutting down main task...")
+    try:
         await _main_task["task"]
+    except asyncio.CancelledError:
+        logger.info("Shut down complete.")
 
-    uvicorn.run(
-        app=fastapi_app,
-        host=host,
-        port=port,
-        log_level=log_level,
-    )
+
+static_dir = Path(__file__).parent.joinpath("build").absolute()
+
+
+app = Starlite(
+    route_handlers=[api_router],
+    static_files_config=[
+        StaticFilesConfig(directories=[static_dir], path="/", html_mode=True)
+    ],
+    on_startup=[init],
+    on_shutdown=[shutdown],
+)

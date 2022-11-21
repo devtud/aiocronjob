@@ -1,7 +1,6 @@
 import asyncio
 
 from aiocronjob import Manager
-from aiocronjob import run_app
 
 
 async def first_task():
@@ -36,6 +35,4 @@ manager = CustomManager()
 manager.register(async_callable=first_task, crontab="* * * * *")
 manager.register(async_callable=second_task, crontab="* * * * *")
 
-
-if __name__ == "__main__":
-    run_app(manager)
+manager.set_default()

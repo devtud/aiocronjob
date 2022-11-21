@@ -1,10 +1,13 @@
 class JobAlreadyRunningException(Exception):
-    pass
+    def __str__(self):
+        return "Job already running"
 
 
 class JobNotFoundException(Exception):
-    pass
+    def __str__(self):
+        return "Job not found"
 
 
 class JobNotRunningException(Exception):
-    pass
+    def __str__(self):
+        return "Job not running"
