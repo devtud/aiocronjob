@@ -1,7 +1,9 @@
 import asyncio
+import json
 from unittest import mock, IsolatedAsyncioTestCase
 
 import httpx
+from async_asgi_testclient import TestClient
 from src.aiocronjob import Manager
 from src.aiocronjob.main import app
 
@@ -164,3 +166,25 @@ class TestApi(IsolatedAsyncioTestCase):
         ]
 
         self.assertEqual(desired_output, response.json())
+
+    async def test_log_stream(self):
+        async def task1():
+            await asyncio.sleep(0.1)
+
+        self.manager.register(task1)
+
+        client = TestClient(app)
+        resp = await client.get("/api/log-stream", stream=True)
+        async for chunk in resp.iter_content(chunk_size=10000):
+            self.assertEqual(
+                {
+                    "event_type": "job_registered",
+                    "job_name": "task1",
+                    "crontab": None,
+                    "enabled": True,
+                    "error": None,
+                    "timestamp": mock.ANY,
+                },
+                json.loads(chunk.decode()),
+            )
+            break

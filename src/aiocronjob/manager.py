@@ -42,16 +42,8 @@ class Manager:
                 if as_json_lines:
                     log = f"{log.json()}\n"
                 yield log
-                print("yielded", log)
             last_index = len(self._log_queue)
             await asyncio.sleep(3)
-
-    def clear(self):
-        """Resets the"""
-        if not (self._is_running or self._is_shutting_down):
-            self._jobs.clear()
-            self._tasks.clear()
-            self._log_queue.clear()
 
     def register(
         self,

@@ -77,6 +77,7 @@ dependencies = [
     "pytz>=2020.1",
     "aiofiles>=0.5.0",
     "starlite>=1.40.0",
+    "async-asgi-testclient>=1.4.11",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
