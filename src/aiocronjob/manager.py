@@ -134,7 +134,7 @@ class Manager:
             job.status = "cancelled"
             job.next_start = None
 
-            task = asyncio.get_event_loop().create_task(self.on_job_cancelled(job_name))
+            task = asyncio.create_task(self.on_job_cancelled(job_name))
             self._cleanup_tasks.append(task)
 
         elif exception := task.exception():
@@ -243,6 +243,10 @@ class Manager:
 
     def state(self) -> State:
         state = State(
-            created_at=now(), jobs_info=[job.dict() for job in self.get_jobs_info()]
+            created_at=now(),
+            jobs_info=[
+                job.dict(exclude={"definition": {"async_callable"}})
+                for job in self.get_jobs_info()
+            ]
         )
         return state
