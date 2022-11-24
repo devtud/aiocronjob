@@ -1,11 +1,12 @@
 import asyncio
+import datetime
 import json
 from unittest import mock, IsolatedAsyncioTestCase
 
 import httpx
 from async_asgi_testclient import TestClient
-from src.aiocronjob import Manager
-from src.aiocronjob.main import app
+from src.aiocronjob import Manager, State
+from src.aiocronjob.main import app, init, shutdown, _main_task
 
 
 class TestApi(IsolatedAsyncioTestCase):
@@ -22,7 +23,7 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_get_job(self):
         async def task1():
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
 
@@ -61,7 +62,7 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_cancel_not_running_job_returns_402(self):
         async def task1():
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
 
@@ -75,7 +76,7 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_start_job(self):
         async def task1():
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
 
@@ -96,7 +97,7 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_start_running_job_returns_402(self):
         async def task1():
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
 
@@ -114,7 +115,7 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_cancel_job(self):
         async def task1():
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
 
@@ -132,10 +133,10 @@ class TestApi(IsolatedAsyncioTestCase):
 
     async def test_list_jobs(self):
         async def task1():
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
 
         async def task2():
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
 
         self.manager.register(task1)
         self.manager.register(task2)
@@ -166,6 +167,64 @@ class TestApi(IsolatedAsyncioTestCase):
         ]
 
         self.assertEqual(desired_output, response.json())
+
+    async def test_task_exception(self):
+        async def task():
+            await asyncio.sleep(1)
+            raise ValueError("err")
+
+        manager_task = asyncio.create_task(self.manager.run())
+
+        self.manager.register(task)
+        # each cycle lasts 1.5 secs, so the task stays as 'registered' max 1.5 secs
+        self.assertEqual("registered", self.manager.get_job_info("task").status)
+
+        await asyncio.sleep(3)
+        self.assertEqual("failed", self.manager.get_job_info("task").status)
+
+        manager_task.cancel()
+
+    async def test_initial_state(self):
+        async def task():
+            await asyncio.sleep(1)
+
+        self.manager.register(task)
+
+        past_date = datetime.datetime(year=2020, month=12, day=31, hour=23)
+
+        initial_state = State(
+            created_at=datetime.datetime.now(),
+            jobs_info=[
+                {
+                    "definition": {"name": "task"},
+                    "status": "running",
+                    "last_status": "failed",
+                    "last_finish": past_date,
+                },
+                {
+                    "definition": {"name": "doesnotexist"},
+                }
+            ],
+        )
+
+        self.manager.set_initial_state(initial_state)
+
+        manager_task = asyncio.create_task(self.manager.run())
+
+        await asyncio.sleep(0)
+
+        self.assertEqual("running", self.manager.get_job_info("task").status)
+        self.assertEqual("failed", self.manager.get_job_info("task").last_status)
+        self.assertEqual(past_date, self.manager.get_job_info("task").last_finish)
+
+        manager_task.cancel()
+
+    async def test_init_and_shutdown_manager(self):
+        await init()
+        self.assertIn("task", _main_task)
+        self.assertFalse(_main_task["task"].done())
+        await shutdown()
+        self.assertTrue(_main_task["task"].done())
 
     async def test_log_stream(self):
         async def task1():

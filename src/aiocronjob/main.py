@@ -16,7 +16,7 @@ async def init():
         raise Exception("Please call .set_default() method on your custom manager.")
 
     global _main_task
-    _main_task["task"] = asyncio.get_event_loop().create_task(manager.run())
+    _main_task["task"] = asyncio.create_task(manager.run())
 
 
 async def shutdown():
