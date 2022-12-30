@@ -66,7 +66,7 @@ build-backend = "pdm.pep517.api"
 
 [project]
 name = "aiocronjob"
-version = "0.6.1"
+version = "0.7.0"
 description = "Schedule async tasks and manage them using a REST API or WEB UI"
 authors = [
     { name = "devtud", email = "devtud@gmail.com" },
