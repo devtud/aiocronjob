@@ -1,8 +1,7 @@
 import asyncio
-from pathlib import Path
 from typing import Dict
 
-from starlite import Starlite, StaticFilesConfig
+from starlite import Starlite
 from .api import api_router
 from .dependencies import get_manager
 from .logger import logger
@@ -31,14 +30,4 @@ async def shutdown():
         logger.info("Shut down complete.")
 
 
-static_dir = Path(__file__).parent.joinpath("build").absolute()
-
-
-app = Starlite(
-    route_handlers=[api_router],
-    static_files_config=[
-        StaticFilesConfig(directories=[static_dir], path="/", html_mode=True)
-    ],
-    on_startup=[init],
-    on_shutdown=[shutdown],
-)
+app = Starlite(route_handlers=[api_router], on_startup=[init], on_shutdown=[shutdown])

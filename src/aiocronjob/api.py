@@ -13,19 +13,9 @@ from .manager import Manager
 @get("/jobs", dependencies={"manager": Provide(get_manager)}, media_type=MediaType.JSON)
 async def get_jobs(manager: Manager) -> List[dict]:
     """List all registered jobs info"""
-    jobs = manager.get_jobs_info()
     return [
-        {
-            "created_at": job.created_at,
-            "crontab": job.definition.crontab,
-            "enabled": job.definition.enabled,
-            "last_status": job.status,
-            "name": job.definition.name,
-            "next_run_in": manager._get_job_next_start_in(job.definition.name),
-            "started_at": job.last_start,
-            "stopped_at": job.last_finish,
-        }
-        for job in jobs
+        job.dict(exclude={"definition": {"async_callable"}})
+        for job in manager.get_jobs_info()
     ]
 
 
@@ -40,16 +30,7 @@ async def get_job_info(job_name: str, manager: Manager) -> dict:
         job_info = manager.get_job_info(job_name)
     except JobNotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return {
-        "created_at": job_info.created_at,
-        "crontab": job_info.definition.crontab,
-        "enabled": job_info.definition.enabled,
-        "last_status": job_info.status,
-        "name": job_info.definition.name,
-        "next_run_in": manager._get_job_next_start_in(job_info.definition.name),
-        "started_at": job_info.last_start,
-        "stopped_at": job_info.last_finish,
-    }
+    return job_info.dict(exclude={"definition": {"async_callable"}})
 
 
 @get(
