@@ -5,8 +5,8 @@ from unittest import mock, IsolatedAsyncioTestCase
 
 import httpx
 from async_asgi_testclient import TestClient
-from src.aiocronjob import Manager, State
-from src.aiocronjob.main import app, init, shutdown, _main_task
+from aiocronjob import Manager, State
+from aiocronjob.main import app, init, shutdown, _main_task
 
 
 class TestApi(IsolatedAsyncioTestCase):
@@ -30,14 +30,14 @@ class TestApi(IsolatedAsyncioTestCase):
         response = await self.client.get("/api/jobs/task1")
 
         desired_output = {
-            "name": "task1",
-            "next_run_in": None,
-            "last_status": "registered",
-            "enabled": True,
-            "crontab": None,
+            "definition": {"crontab": None, "enabled": True, "name": "task1"},
+            "last_finish": None,
+            "last_finish_status": None,
+            "last_start": None,
+            "last_status": None,
+            "next_start": None,
+            "status": "registered",
             "created_at": mock.ANY,
-            "started_at": mock.ANY,
-            "stopped_at": mock.ANY,
         }
 
         self.assertEqual(desired_output, response.json())
@@ -145,24 +145,24 @@ class TestApi(IsolatedAsyncioTestCase):
 
         desired_output = [
             {
-                "name": "task1",
-                "next_run_in": None,
-                "last_status": "registered",
-                "enabled": True,
-                "crontab": None,
+                "definition": {"crontab": None, "enabled": True, "name": "task1"},
+                "last_finish": None,
+                "last_finish_status": None,
+                "last_start": None,
+                "last_status": None,
+                "next_start": None,
+                "status": "registered",
                 "created_at": mock.ANY,
-                "started_at": mock.ANY,
-                "stopped_at": mock.ANY,
             },
             {
-                "name": "task2",
-                "next_run_in": None,
-                "last_status": "registered",
-                "enabled": True,
-                "crontab": None,
+                "definition": {"crontab": None, "enabled": True, "name": "task2"},
+                "last_finish": None,
+                "last_finish_status": None,
+                "last_start": None,
+                "last_status": None,
+                "next_start": None,
+                "status": "registered",
                 "created_at": mock.ANY,
-                "started_at": mock.ANY,
-                "stopped_at": mock.ANY,
             },
         ]
 
