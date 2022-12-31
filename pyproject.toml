@@ -1,9 +1,9 @@
 [tool.coverage.paths]
-source = ["src", "*/site-packages"]
+source = ["aiocronjob", "*/site-packages"]
 
 [tool.coverage.run]
 branch = true
-source = ["src/aiocronjob"]
+source = ["aiocronjob"]
 
 [tool.coverage.report]
 fail_under = 98
@@ -49,7 +49,7 @@ exclude = '''
 '''
 
 [tool.pdm.build]
-includes = ["README.md", "src/aiocronjob/"]
+includes = ["aiocronjob", "README.md"]
 excludes = ["tests/"]
 
 [tool.pdm.dev-dependencies]
@@ -66,7 +66,7 @@ build-backend = "pdm.pep517.api"
 
 [project]
 name = "aiocronjob"
-version = "0.6.1"
+version = "0.7.0"
 description = "Schedule async tasks and manage them using a REST API or WEB UI"
 authors = [
     { name = "devtud", email = "devtud@gmail.com" },
